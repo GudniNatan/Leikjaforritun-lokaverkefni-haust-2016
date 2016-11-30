@@ -22,7 +22,30 @@ class Block(pygame.sprite.Sprite): # Simple block
         self.rect.topleft = rect.topleft
 
 
-class Sword(pygame.sprite.Sprite):
+class SimpleSprite(pygame.sprite.Sprite):  # Molds rect to sprite
+    def __init__(self, top_left_point, surface):
+        super(SimpleSprite, self).__init__()
+        self.image = surface
+        self.rect = surface.get_rect()
+        self.rect.topleft = top_left_point
+
+
+class SimpleRectSprite(pygame.sprite.Sprite):  # Molds sprite to rect, either by cropping or rescaling
+    def __init__(self, rect, surface, scale=False):
+        super(SimpleRectSprite, self).__init__()
+        self.rect = pygame.Rect(rect)
+        self.image = surface
+        rect.topleft = (0, 0)
+        if rect.contains(surface.get_rect()):
+            return
+        if not scale:
+            self.image = surface.subsurface(rect)
+        else:
+            self.image = pygame.transform.scale(surface, (rect.w, rect.h))
+
+
+
+'''class Sword(pygame.sprite.Sprite):
     def __init__(self, x, y, image):
         self.image = pygame.Surface([rect.w, rect.h])
         self.image.fill(color)
@@ -41,7 +64,7 @@ class Sword(pygame.sprite.Sprite):
 
     def update_pos(self, pos):
         self.originalRect.center = pos
-        self.rect.center = pos
+        self.rect.center = pos'''
 
 
 class Animation(object):

@@ -37,6 +37,7 @@ class GameScene(Scene):
         super(GameScene, self).__init__()
         charset = pygame.image.load(os.path.join('images', 'charset.png')).convert_alpha()
         shadow = pygame.image.load(os.path.join('images', 'shadow.png')).convert_alpha()
+        walls = pygame.image.load(os.path.join('images', 'veggur test.png')).convert_alpha()
         self.paused = False
         self.entities = pygame.sprite.LayeredUpdates()
         self.npcs = pygame.sprite.Group()
@@ -51,14 +52,19 @@ class GameScene(Scene):
 
         f = open(os.path.join('rooms', 'room' + str(level)) + ".txt", 'r')
         lines = f.readlines()
-        for i in range(len(lines)):
-            for j in range(len(lines[i])):
+        for i in xrange(len(lines)):
+            for j in xrange(len(lines[i])):
                 if lines[i][j] == "W":
                     rect = pygame.Rect(j * drawSize, i * drawSize, drawSize, drawSize)
-                    self.block_group.add(Block(rect, BLACK))
+                    self.block_group.add(SimpleRectSprite(rect, walls.subsurface(0, 0, drawSize, drawSize)))
                 if lines[i][j] == "S":
                     stalker = Stalker(pygame.Rect(j * drawSize, i * drawSize, 15, drawSize / 2), charset.subsurface(pygame.Rect(48, 72, 47, 72)), character_sprite_size, self.player)
                     self.npcs.add(stalker)
+                if lines[i][j] == "P":
+                    self.player.realX = j * drawSize
+                    self.player.realY = i * drawSize
+                    self.player.collision_rect.topleft = (j * drawSize, i * drawSize)
+                    print("p")
 
         '''for i in range(GRID_SIZE[0] * 2):
                 block1 = (Block(pygame.Rect(i * drawSize, 0, drawSize, drawSize), BLACK))
@@ -209,21 +215,19 @@ class TitleScene(Scene):
         screen.fill(BLACK)
         text1 = self.font.render('Lokaverkefni', True, tuple(self.color))
         text2 = self.sfont.render('> press space to start <', True, WHITE)
-        screen.blit(text1, (130, 50))
-        screen.blit(text2, (100, 350))
+        screen.blit(text1, (450, 50))
+        screen.blit(text2, (420, 350))
 
     def update(self, time):
         pass
 
     def handle_events(self, events):
         for event in events:
+            if event.type == pygame.QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
+                pygame.event.post(pygame.event.Event(QUIT))
             if event.type == KEYDOWN and event.key == K_SPACE:
                 self.mixer.fadeout(500)
                 self.manager.go_to(GameScene(0))
-            if event.type == pygame.QUIT:
-                pygame.event.post(pygame.event.Event(QUIT))
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                pygame.event.post(pygame.event.Event(QUIT))
             if event.type == animationEvent:
                 for i in range(3):
                     if self.colorLevel[i]:

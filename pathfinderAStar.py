@@ -114,13 +114,13 @@ class AStar:
         index = 0
         while index is not None:
             finish = self.handleNode(index)
-            if self.passcount > 250 or (range != -1 and self.passcount > search_range * 10):
+            if self.passcount > 250 or (search_range != -1 and self.passcount > search_range * 10):
                 break
             if finish:
                 if finish is None:
                     break
                 path = self.trace_path(finish)
-                if range != -1 and len(path.nodes) > search_range:
+                if search_range != -1 and len(path.nodes) > search_range:
                     break
                 return self.trace_path(finish)
             index = self.getHighestPriorityNodeIndex(self.open_list)

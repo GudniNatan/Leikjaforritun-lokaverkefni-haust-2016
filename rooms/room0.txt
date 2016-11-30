@@ -1,19 +1,21 @@
-WWWWWWWWWWW   WWWWWWWWWWW
-W                      WW
-W                       W
-W                       W
-W                       W
-W                  S    W
-W                       W
-W           W           W
-           WWW           
-          WWWWW          
-           WWW           
-W           W           W
-W                       W
-W                       W
-W           S           W
-W                       W
-W                       W
-WW                     WW
-WWWWWWWWWWW   WWWWWWWWWWW
+WWWWWWWWWWWW   WWWWWWWWWWWW
+WWWWWWWWWWWW   WWWWWWWWWWWW
+WWW                     WWW
+WW                       WW
+WW    P                  WW
+WW                       WW
+WW                  S    WW
+WW                       WW
+WW           W           WW
+            WWW           
+           WWWWW          
+            WWW           
+WW           W           WW
+WW                       WW
+WW                       WW
+WW           S           WW
+WW                       WW
+WW                       WW
+WWW                      WW
+WWWWWWWWWWWW   WWWWWWWWWWWW
+WWWWWWWWWWWW   WWWWWWWWWWWW
