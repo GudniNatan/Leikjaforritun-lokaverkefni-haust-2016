@@ -18,6 +18,7 @@ class Character(pygame.sprite.Sprite):
         self.gridPos = [self.collision_rect.center[0] / drawSize, self.collision_rect.center[1] / drawSize]
         self.baseSpeed = 0.08
         self.health = 3
+        self.maxHealth = self.health
         self.charset = charset
         self.sprite_size_rect = sprite_size_rect
         self.image = pygame.Surface((0, 0))
@@ -25,7 +26,7 @@ class Character(pygame.sprite.Sprite):
         self.last_direction = None
         self.set_sprite_direction()
         self.rect = self.image.get_rect()
-        self.rect.midbottom = rect.midbottom
+        self.rect.midbottom = (rect.centerx, rect.bottom - 1)
         self.collision_rect.w = 20
         self.walking_phase = 1
         self.moving = False
@@ -139,7 +140,7 @@ class Character(pygame.sprite.Sprite):
         self.collision_rect.x = self.realX
         self.collision_rect.y = self.realY
         self.gridPos = [self.collision_rect.center[0] / drawSize, self.collision_rect.center[1] / drawSize]
-        self.rect.midbottom = self.collision_rect.midbottom
+        self.rect.midbottom = (rect.centerx, rect.bottom - 1)
 
     def get_collision_box(self):
         return Box(self.collision_rect)
@@ -149,6 +150,7 @@ class Character(pygame.sprite.Sprite):
             return
         self.stunned = True
         self.health -= 1
+        pygame.event.post(pygame.event.Event(healthEvent))
         pygame.time.set_timer(unstunEvent, 500)
 
 
@@ -158,6 +160,7 @@ class Player(Character):
         self.score = 5
         self.kitCount = 0
         self.direction = 180
+        self.displayHealth = self.health
 
     def update_speed(self):
         keys = pygame.key.get_pressed()

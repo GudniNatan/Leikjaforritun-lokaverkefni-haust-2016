@@ -7,9 +7,9 @@ WW                       WW
 WW                  S    WW
 WW                       WW
 WW           W           WW
-            WWW           
-           WWWWW          
-            WWW           
+            WWW            
+           WWWWW           
+            WWW            
 WW           W           WW
 WW                       WW
 WW                       WW

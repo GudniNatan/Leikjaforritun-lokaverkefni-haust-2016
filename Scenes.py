@@ -37,43 +37,62 @@ class GameScene(Scene):
         super(GameScene, self).__init__()
         charset = pygame.image.load(os.path.join('images', 'charset.png')).convert_alpha()
         shadow = pygame.image.load(os.path.join('images', 'shadow.png')).convert_alpha()
-        walls = pygame.image.load(os.path.join('images', 'veggur test.png')).convert_alpha()
+        walls = pygame.image.load(os.path.join('images', 'veggur test 4.png')).convert_alpha()
+        heart = pygame.image.load(os.path.join('images', 'hearts.png')).convert_alpha()
+        floor_tile = pygame.image.load(os.path.join('images', 'floor.png')).convert_alpha()
+        self.heartTexture = heart
         self.paused = False
         self.entities = pygame.sprite.LayeredUpdates()
         self.npcs = pygame.sprite.Group()
         self.animations = list()
         self.collidables = list()
         character_sprite_size = (16, 18, 24)
-        self.player = Player(pygame.Rect(30, 30, drawSize-1, drawSize / 2), charset.subsurface(pygame.Rect(0, 72, 47, 72)), character_sprite_size)
+        self.player = Player(pygame.Rect(30, 30, drawSize-1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(0, 72, 47, 72)), character_sprite_size)
 
         self.block_group = pygame.sprite.Group()
+        self.background_group = pygame.sprite.Group()
         self.grid = Grid(GRID_SIZE)
         self.grand_clock = pygame.time.Clock()
 
         f = open(os.path.join('rooms', 'room' + str(level)) + ".txt", 'r')
-        lines = f.readlines()
+        lines = f.read().splitlines()
+        self.levelrect = pygame.Rect(drawSize * 12, drawSize * 4, len(lines[0]) * drawSize, len(lines) * drawSize)
         for i in xrange(len(lines)):
             for j in xrange(len(lines[i])):
+                rect = pygame.Rect(j * drawSize + self.levelrect.x, i * drawSize + self.levelrect.y, drawSize, drawSize)
                 if lines[i][j] == "W":
-                    rect = pygame.Rect(j * drawSize, i * drawSize, drawSize, drawSize)
-                    self.block_group.add(SimpleRectSprite(rect, walls.subsurface(0, 0, drawSize, drawSize)))
+                    sliced = [["W", "W", "W"], ["W", "W", "W"], ["W", "W", "W"]]
+                    if 1 < i:
+                        sliced[0][1] = lines[i-1][j]
+                        if j > 1:
+                            sliced[0][0] = lines[i-1][j-1]
+                        if j < (len(lines[i]) - 1):
+                            sliced[0][2] = lines[i-1][j+1]
+                    if 1 < j:
+                        sliced[1][0] = lines[i][j-1]
+                    if j < (len(lines[i]) - 1):
+                        sliced[1][2] = lines[i][j+1]
+                    if i < (len(lines)-1):
+                        sliced[2][1] = lines[i+1][j]
+                        if 1 < j:
+                            sliced[2][0] = lines[i+1][j-1]
+                        if j < (len(lines[i]) - 1):
+                            sliced[2][2] = lines[i+1][j+1]
+                    sprite = self.make_wall_block(walls, sliced)
+                    sprite = SimpleRectSprite(rect, sprite.image, True)
+                    self.block_group.add(sprite)
                 if lines[i][j] == "S":
-                    stalker = Stalker(pygame.Rect(j * drawSize, i * drawSize, 15, drawSize / 2), charset.subsurface(pygame.Rect(48, 72, 47, 72)), character_sprite_size, self.player)
+                    stalker = Stalker(pygame.Rect(rect.x, rect.y, 15, drawSize / 2), charset.subsurface(pygame.Rect(48, 72, 47, 72)), character_sprite_size, self.player)
                     self.npcs.add(stalker)
                 if lines[i][j] == "P":
-                    self.player.realX = j * drawSize
-                    self.player.realY = i * drawSize
-                    self.player.collision_rect.topleft = (j * drawSize, i * drawSize)
-                    print("p")
+                    self.player.realX = j * drawSize + self.levelrect.x
+                    self.player.realY = i * drawSize + self.levelrect.y
+                    self.player.collision_rect.topleft = (j * drawSize + self.levelrect.x, i * drawSize + self.levelrect.y)
+                if lines[i][j] != "W":
+                    sprite = SimpleRectSprite(rect, floor_tile, True)
+                    sprite.image = pygame.transform.rotate(sprite.image, random.randrange(0, 360, 90))
+                    self.background_group.add(sprite)
 
-        '''for i in range(GRID_SIZE[0] * 2):
-                block1 = (Block(pygame.Rect(i * drawSize, 0, drawSize, drawSize), BLACK))
-                block2 = (Block(pygame.Rect(i * drawSize, (GRID_SIZE[1] * 2 - 1) * drawSize, drawSize, drawSize), BLACK))
-                self.block_group.add(block1, block2)
-        for i in range(GRID_SIZE[1] * 2):
-                block1 = (Block(pygame.Rect(0, i * drawSize, drawSize, drawSize), BLACK))
-                block2 = (Block(pygame.Rect((GRID_SIZE[0] * 2 - 1) * drawSize, i * drawSize, drawSize, drawSize), BLACK))
-                self.block_group.add(block1, block2)'''
         self.collidables.extend(self.block_group)
 
         self.entities.add(self.player, self.npcs)
@@ -81,19 +100,30 @@ class GameScene(Scene):
         self.grid.update_grid(self.collidables + self.character_collision_boxes)
         if self.character_collision_boxes:
             self.shadow = pygame.transform.scale(shadow, self.character_collision_boxes[0].rect.size)
+        self.heartList = list()
+        for i in xrange(self.player.maxHealth):
+            rect = pygame.Rect(self.levelrect.x + (50 * i), 20, 7 * 6, 7 * 6)
+            self.heartList.append(SimpleRectSprite(rect, heart.subsurface(pygame.Rect(0,0,8,8)), True))
+        self.hearts = pygame.sprite.Group(self.heartList)
+
+
+
 
     def render(self, screen):
-        screen.fill(WHITE)
+        screen.fill(BLACK)
+        self.background_group.draw(screen)
+
         for box in self.character_collision_boxes:
             screen.blit(self.shadow, box.rect.midleft)
-
         self.block_group.draw(screen)
         self.entities.draw(screen)
+        self.hearts.draw(screen)
         if self.paused:
             line_rect1 = pygame.Rect(screen.get_rect().w / 32 * 31, screen.get_rect().h / 16, screen.get_rect().w / 64, screen.get_rect().w / 64 * 3)
             line_rect2 = pygame.Rect(screen.get_rect().w / 32 * 30, screen.get_rect().h / 16, screen.get_rect().w / 64, screen.get_rect().w / 64 * 3)
             pygame.draw.rect(screen, RED, line_rect1)
             pygame.draw.rect(screen, RED, line_rect2)
+        pygame.draw.rect(screen, BLACK, self.levelrect, 6)
 
     def update(self, time):
         if self.paused:
@@ -105,8 +135,6 @@ class GameScene(Scene):
             if type(entity) is not Player:
                 entity.update_speed()
             entity.update_position(time, self.collidables + self.character_collision_boxes)
-        if self.player.health <= 0:
-            self.manager.go_to(GameOverScene())
 
     def handle_events(self, events):
         for event in events:
@@ -144,6 +172,13 @@ class GameScene(Scene):
                         #Death
                         #Door opening
                         #Chest opening
+                    if s.name == "health":
+                        if s.phase >= 13:
+                            self.animations.remove(s)
+                            continue
+                        s.sprite.image = SimpleRectSprite(pygame.Rect(s.sprite.rect), self.heartTexture.subsurface(pygame.Rect((s.phase) * 8, 0, 8, 8)), True).image
+                        s.phase += 1
+
                 for char in self.entities:
                     if char.moving:
                         char.walking_phase = char.walking_phase + 0.5
@@ -196,6 +231,39 @@ class GameScene(Scene):
                 for entity in self.entities:
                     if entity.stunned:
                         entity.stunned = False
+            if event.type == healthEvent:
+                if self.player.health <= 0:
+                    self.manager.go_to(GameOverScene())
+                if self.player.displayHealth != self.player.health:
+                    params = {'sprite': self.heartList[self.player.displayHealth-1],
+                              'jumpdistance': 8, 'phase': 0, }
+                    self.animations.append(Animation("health", params))
+                    self.player.displayHealth -= 1
+
+    def make_wall_block(self, wall_texture, array_slice):
+        rect = pygame.Rect(0, 0, 24, 24)
+        sprite = Block(rect, BLACK)
+        rotated = list(array_slice)
+        for i2 in xrange(4):
+            innerRect = pygame.Rect(0, 0, 12, 12)
+            if rotated[1][0] != "W":
+                if rotated[0][1] != "W":
+                    # open corner
+                    innerRect.topleft = (12, 12)
+                else:
+                    # wall facing left
+                    innerRect.topleft = (24, 0)
+            elif rotated[0][1] != "W":
+                innerRect.topleft = (12, 0)
+                # wall facing up
+            elif rotated[0][0] != "W":
+                innerRect.topleft = (0, 12)
+            sprite.image.blit(wall_texture.subsurface(innerRect), (0, 0))
+            rotated = zip(*rotated[::-1])
+            sprite.image = pygame.transform.rotate(sprite.image, -90)
+        return sprite
+
+
 
 
 class TitleScene(Scene):
@@ -300,6 +368,6 @@ class GameOverScene(Scene):
         for event in events:
             if event.type == pygame.QUIT:
                 pygame.event.post(pygame.event.Event(QUIT))
-            if event.type == KEYDOWN and event.key == K_SPACE or event.key == K_ESCAPE:
+            if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_ESCAPE):
                 self.manager.go_to(TitleScene())
 

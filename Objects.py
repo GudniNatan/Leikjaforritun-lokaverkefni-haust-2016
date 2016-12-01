@@ -36,8 +36,6 @@ class SimpleRectSprite(pygame.sprite.Sprite):  # Molds sprite to rect, either by
         self.rect = pygame.Rect(rect)
         self.image = surface
         rect.topleft = (0, 0)
-        if rect.contains(surface.get_rect()):
-            return
         if not scale:
             self.image = surface.subsurface(rect)
         else:
