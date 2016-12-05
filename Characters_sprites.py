@@ -24,6 +24,7 @@ class Character(pygame.sprite.Sprite):
         self.image = pygame.Surface((0, 0))
         self.direction = 180
         self.last_direction = None
+        self.directionLock = False
         self.set_sprite_direction()
         self.rect = self.image.get_rect()
         self.rect.midbottom = (rect.centerx, rect.bottom - 1)
@@ -40,6 +41,15 @@ class Character(pygame.sprite.Sprite):
         if vx == 0 and vy == 0 and self.last_direction is not None:
             self.moving = False
             self.walking_phase = 1
+            return
+        if self.directionLock:
+            self.last_direction = -1
+            if vx == 0 and vy == 0:
+                self.moving = False
+                self.walking_phase = 1
+            else:
+                self.moving = True
+            self.update_sprite()
             return
         direction = 180
         if vx and vy:
@@ -96,15 +106,24 @@ class Character(pygame.sprite.Sprite):
         pass
 
     def update_position(self, time, collidables):
-        if time > 20:
-            time = 20
         if time == 0:
             pygame.time.wait(1)
             time = 1
         original_x = self.realX
         original_y = self.realY
-        self.realX += self.vx * time
-        self.realY += self.vy * time
+        pixellimit = 6 # should not ever be higher than drawsize / 2
+        if -pixellimit < self.vx * time < pixellimit:
+            self.realX += self.vx * time
+        elif self.vx < 0:
+            self.realX -= pixellimit
+        else:
+            self.realX += pixellimit
+        if -pixellimit < self.vy * time < pixellimit:
+            self.realY += self.vy * time
+        elif self.vy < 0:
+            self.realY -= pixellimit
+        else:
+            self.realY += pixellimit
         rect = self.collision_rect
         next_location = pygame.Rect(int(self.realX), int(self.realY), rect.w, rect.h)
         self.next_location = next_location
@@ -116,29 +135,33 @@ class Character(pygame.sprite.Sprite):
                     max(rect.center[1], object.rect.center[1]) - min(rect.center[1], object.rect.center[1]) > max(rect.h, object.rect.h) * 2):
                 continue
             if object.rect.colliderect(next_location):
-                    # Flats
-                    if self.vx > 0 and object.rect.colliderect(pygame.Rect(next_location.left + next_location.w, rect.top, 0, next_location.h)):    # Left
-                        self.realX = original_x
-                    if self.vx < 0 and object.rect.colliderect(pygame.Rect(next_location.right - next_location.w, rect.top, 0, next_location.h)):    # right
-                        self.realX = original_x
-                    if self.vy > 0 and object.rect.colliderect(pygame.Rect(rect.left, next_location.top + next_location.h, next_location.w, 0)):    # top
-                        self.realY = original_y
-                    if self.vy < 0 and object.rect.colliderect(pygame.Rect(rect.left, next_location.bottom - next_location.h, next_location.w, 0)):    # bottom
-                        self.realY = original_y
-                    # Corners
-                    if object.rect.collidepoint(rect.topleft[0] + 0.1, rect.topleft[1] + 0.1):
-                        [self.realX, self.realY] = [original_x + 0.1, original_y + 1.1]
-                    if object.rect.collidepoint(rect.bottomleft[0] + 0.1, rect.bottomleft[1] - 0.1):
-                        [self.realX, self.realY] = [original_x + 1.1, original_y - 0.1]
-                    if object.rect.collidepoint(rect.topright[0] - 0.1, rect.topright[1] + 0.1):
-                        [self.realX, self.realY] = [original_x - 0.1, original_y + 1.1]
-                    if object.rect.collidepoint(rect.bottomright[0] - 0.1, rect.bottomright[1] - 0.1):
-                        [self.realX, self.realY] = [original_x - 1.1, original_y - 0.1]
+                # Flats
+                if self.vx > 0 and object.rect.colliderect(
+                        pygame.Rect(next_location.left + next_location.w, rect.top, 0, next_location.h)):  # Left
+                    self.realX = object.rect.left - next_location.w
+                if self.vx < 0 and object.rect.colliderect(
+                        pygame.Rect(next_location.right - next_location.w, rect.top, 0, next_location.h)):  # right
+                    self.realX = object.rect.right
+                if self.vy > 0 and object.rect.colliderect(
+                        pygame.Rect(rect.left, next_location.top + next_location.h, next_location.w, 0)):  # top
+                    self.realY = object.rect.top - next_location.h
+                if self.vy < 0 and object.rect.colliderect(
+                        pygame.Rect(rect.left, next_location.bottom - next_location.h, next_location.w, 0)):  # bottom
+                    self.realY = object.rect.bottom
+                # Corners
+                if object.rect.collidepoint(rect.topleft[0] + 0.1, rect.topleft[1] + 0.1):
+                    [self.realX, self.realY] = [original_x + 0.1, original_y + 1.1]
+                if object.rect.collidepoint(rect.bottomleft[0] + 0.1, rect.bottomleft[1] - 0.1):
+                    [self.realX, self.realY] = [original_x + 1.1, original_y - 0.1]
+                if object.rect.collidepoint(rect.topright[0] - 0.1, rect.topright[1] + 0.1):
+                    [self.realX, self.realY] = [original_x - 0.1, original_y + 1.1]
+                if object.rect.collidepoint(rect.bottomright[0] - 0.1, rect.bottomright[1] - 0.1):
+                    [self.realX, self.realY] = [original_x - 1.1, original_y - 0.1]
 
             if object.rect.collidepoint(rect.center):   # Moves you out if fully inside a block
                 [self.realX, self.realY] = self.startPoint
-        self.collision_rect.x = self.realX
-        self.collision_rect.y = self.realY
+        rect.x = self.realX
+        rect.y = self.realY
         self.gridPos = [self.collision_rect.center[0] / drawSize, self.collision_rect.center[1] / drawSize]
         self.rect.midbottom = (rect.centerx, rect.bottom - 1)
 
@@ -160,6 +183,7 @@ class Player(Character):
         self.score = 5
         self.kitCount = 0
         self.direction = 180
+        self.health = 8
         self.displayHealth = self.health
 
     def update_speed(self):
@@ -171,7 +195,6 @@ class Player(Character):
         else:
             if keys[K_UP]:
                 self.vy = -speed
-                self.direction = 0
             if keys[K_DOWN]:
                 self.vy = speed
             if keys[K_LEFT]:

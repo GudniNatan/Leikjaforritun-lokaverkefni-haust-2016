@@ -15,12 +15,12 @@ def main():
 
     # Setup
     charset = pygame.image.load(os.path.join('images', 'charset.png')).convert_alpha()
-    pygame.time.set_timer(pathfindingEvent, 500)
-    pygame.time.set_timer(animationEvent, 1000 / 24)
     gridImage = pygame.image.load(os.path.join('images', 'grid 16x16 transculent.png')).convert_alpha()
     gridImage = pygame.transform.scale(gridImage, (gridImage.get_rect().w * 24 / 16, gridImage.get_rect().h * 24 / 16))
     manager = SceneMananger()
     pygame.mixer.init()
+    pygame.time.set_timer(pathfindingEvent, 500)
+    pygame.time.set_timer(animationEvent, 1000 / 24)
     running = True
 
     # Game loop
@@ -32,7 +32,7 @@ def main():
         pygame.display.update()
         manager.scene.handle_events(pygame.event.get())
         manager.scene.update(clock.get_time())
-        clock.tick()
+        clock.tick(120)
 
     pygame.quit()
     sys.exit()

@@ -1,5 +1,5 @@
-WWWWWWWWWWWW   WWWWWWWWWWWW
-WWWWWWWWWWWW   WWWWWWWWWWWW
+WWWWWWWWWWWWDDDWWWWWWWWWWWW
+WWWWWWWWWWWWDDDWWWWWWWWWWWW
 WWW                     WWW
 WW                       WW
 WW    P                  WW
@@ -7,9 +7,9 @@ WW                       WW
 WW                  S    WW
 WW                       WW
 WW           W           WW
-            WWW            
-           WWWWW           
-            WWW            
+            WWW          DD
+           WWWWW         DD
+            WWW          DD
 WW           W           WW
 WW                       WW
 WW                       WW
