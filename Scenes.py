@@ -11,8 +11,6 @@ from math import sin
 
 class SceneMananger(object):
     def __init__(self):
-        # self.go_to(TitleScene())
-
         self.go_to(TitleScene())
 
     def go_to(self, scene):
@@ -42,6 +40,7 @@ class GameScene(Scene):
         heart = pygame.image.load(os.path.join('images', 'hearts.png')).convert_alpha()
         floor_tile = pygame.image.load(os.path.join('images', 'floor.png')).convert_alpha()
         self.sword_texture = pygame.image.load(os.path.join('images', 'swords3.png')).convert_alpha()
+        self.sword_icon = pygame.image.load(os.path.join('images', 'sword icon.png')).convert_alpha()
         self.heartTexture = heart
         self.paused = False
         self.entities = pygame.sprite.LayeredUpdates()
@@ -133,6 +132,7 @@ class GameScene(Scene):
             pygame.draw.rect(screen, RED, line_rect2)
         pygame.draw.rect(screen, BLACK, self.levelrect, 6)
         screen.blit(self.swordsprite.image, (0,0))
+        screen.blit(self.sword_icon.subsurface(pygame.Rect(0, 0, 44, 44)), (1000, 50))
 
     def update(self, time):
         if self.paused:
@@ -170,7 +170,7 @@ class GameScene(Scene):
             if event.type == animationEvent:
                 # Update all active animations
                 for s in self.animations:
-                    if s.name == "sword":
+                    if s.name == "sword":  #Sword animation
                         self.player.directionLock = True
                         if s.phase >= 12:
                             self.swordsprite.image = pygame.Surface((0, 0))
@@ -178,6 +178,7 @@ class GameScene(Scene):
                             self.player.directionLock = False
                             self.player.set_sprite_direction()
                             self.player.update_sprite()
+                            self.sword_icon = pygame.transform.flip(self.sword_icon, True, False)
                             continue
                         if s.phase < 7:
                             if s.phase == 3:
@@ -188,6 +189,8 @@ class GameScene(Scene):
                                 self.swordsprite.image = s.sprite.subsurface(pygame.Rect(25 * (s.phase-2), 0, 25, 28))
                             self.swordsprite.image = pygame.transform.rotate(pygame.transform.flip(self.swordsprite.image, True, False), (360 - self.player.direction) % 360 )
                         self.swordsprite.rect.topleft = self.player.rect.midtop
+                        if s.phase == 0:
+                            self.sword_icon = pygame.transform.flip(self.sword_icon, True, False)
                         if 45 > (self.player.direction % 360) or (self.player.direction % 360) >= 315:
                             self.swordsprite.rect.left -= 16
                         elif 45 <= (self.player.direction % 360) < 135:
@@ -303,8 +306,6 @@ class GameScene(Scene):
         return sprite
 
 
-
-
 class TitleScene(Scene):
 
     def __init__(self):
@@ -367,6 +368,7 @@ class TitleScene(Scene):
 class TextScrollScene(Scene):
 
     def __init__(self, text):
+        super(TextScrollScene, self).__init__()
         f = codecs.open(os.path.join('text', 'text' + str(text)) + ".txt", encoding='utf-8-sig')
         lines = f.readlines()
         self.text = ""
@@ -405,6 +407,7 @@ class TextScrollScene(Scene):
 
 class GameOverScene(Scene):
     def __init__(self):
+        super(GameOverScene, self).__init__()
         font = pygame.font.SysFont('Consolas', 56)
         small_font = pygame.font.SysFont('Consolas', 32)
         self.text = font.render('Game Over', True, WHITE)
