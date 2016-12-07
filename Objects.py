@@ -41,6 +41,72 @@ class SimpleRectSprite(pygame.sprite.Sprite):  # Molds sprite to rect, either by
         else:
             self.image = pygame.transform.scale(surface, (rect.w, rect.h))
 
+    def move(self, (x, y)):
+        self.rect.x += x
+        self.rect.y += y
+
+class ActionObject(object):
+    def __init__(self, spriteGroup=pygame.sprite.Group()):
+        super(ActionObject, self).__init__()
+        self.spriteGroup = spriteGroup
+        rects = [sprite.rect for sprite in self.spriteGroup]
+        self.rect = rects[0].unionall(rects)
+
+    def move(self, (x, y)):
+        for sprite in self.spriteGroup:
+            sprite.rect.x += x
+            sprite.rect.y += y
+        self.rect.x += x
+        self.rect.y += y
+
+    def kill(self):
+        for sprite in self.spriteGroup:
+            sprite.kill()
+
+class Door(SimpleRectSprite):
+    def __init__(self, rect, surface, rotation, parent_surface, locked=False, is_open=False, scale=False):
+        super(Door, self).__init__(rect, surface, scale)
+        self.is_open = False
+        self.rotation = rotation
+        self.locked = locked
+        if is_open:
+            self.toggle()
+        self.parent_surface = parent_surface
+
+    def toggle(self):
+        if self.locked:
+            return
+        if self.is_open:
+            if self.rotation % 180 == 0:
+                self.move(((self.rotation-90)/90 * drawSize * 3, 0))
+            else:
+                self.move((0, -(self.rotation-180)/90 * drawSize * 3))
+        else:
+            if self.rotation % 180 == 0:
+                self.move((-(self.rotation-90)/90 * drawSize * 3, 0))
+            else:
+                self.move((0, (self.rotation-180)/90 * drawSize * 3))
+        self.is_open = not self.is_open
+
+    def unlock(self):
+        if not self.locked:
+            return
+        self.image = self.parent_surface.subsurface(pygame.Rect(0, 0, self.image.get_width(), self.image.get_height()))
+        self.locked = False
+
+
+class Chest(SimpleRectSprite):
+    def __init__(self, top_left_point, surface, opened=False):
+        self.surface = surface
+        surface = surface.subsurface(pygame.Rect(0, 0, surface.get_width() / 2, surface.get_height() / 2))
+        super(Chest, self).__init__(pygame.Rect(top_left_point[0], top_left_point[1], drawSize, drawSize), self.surface, True)
+        self.opened = opened
+        self.topleft = top_left_point
+
+    def open(self):
+        self.surface =  pygame.transform.flip(self.surface, True, False)
+        super(Chest, self).__init__(pygame.Rect(self.topleft[0], self.topleft[1], drawSize, drawSize), self.surface, True)
+        self.opened = True
 
 
 '''class Sword(pygame.sprite.Sprite):
@@ -83,7 +149,7 @@ class Grid(object):
 
     def make_grid(self):
         grid_size = self.grid_size
-        grid = [[0 for i in range((grid_size[1] * 2) + 1)] for j in range((grid_size[0] * 2) + 1)]
+        grid = [[0 for i in xrange((grid_size[1] * 2) + 1)] for j in xrange((grid_size[0] * 2) + 1)]
         self.grid = grid
 
     def update_grid(self, collidables, resolution=1):

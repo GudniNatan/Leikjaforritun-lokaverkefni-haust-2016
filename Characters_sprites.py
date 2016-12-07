@@ -168,11 +168,11 @@ class Character(pygame.sprite.Sprite):
     def get_collision_box(self):
         return Box(self.collision_rect)
 
-    def stun(self):
+    def hit(self, damage=1):
         if self.stunned:
             return
         self.stunned = True
-        self.health -= 1
+        self.health -= damage
         pygame.event.post(pygame.event.Event(healthEvent))
         pygame.time.set_timer(unstunEvent, 500)
 
@@ -183,8 +183,8 @@ class Player(Character):
         self.score = 5
         self.kitCount = 0
         self.direction = 180
-        self.health = 8
         self.displayHealth = self.health
+        self.keys = 1
 
     def update_speed(self):
         keys = pygame.key.get_pressed()
@@ -269,5 +269,5 @@ class Stalker(NPC):
         super(Stalker, self).update_position(time, collidables)
         if self.next_location.colliderect(self.player.collision_rect):
             if not self.player.stunned:
-                self.player.stun()
+                self.player.hit()
 

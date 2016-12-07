@@ -32,7 +32,7 @@ def main():
         pygame.display.update()
         manager.scene.handle_events(pygame.event.get())
         manager.scene.update(clock.get_time())
-        clock.tick(120)
+        clock.tick()
 
     pygame.quit()
     sys.exit()

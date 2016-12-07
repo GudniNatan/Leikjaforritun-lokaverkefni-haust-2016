@@ -21,5 +21,6 @@ swordSwingEvent = USEREVENT+4
 walkEvent = USEREVENT+5
 unstunEvent = USEREVENT+6
 healthEvent = USEREVENT+7
+actionEvent = USEREVENT+8
 
 

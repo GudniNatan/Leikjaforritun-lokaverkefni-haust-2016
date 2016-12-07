@@ -39,6 +39,7 @@ class GameScene(Scene):
         walls = pygame.image.load(os.path.join('images', 'veggur2.png')).convert_alpha()
         heart = pygame.image.load(os.path.join('images', 'hearts.png')).convert_alpha()
         floor_tile = pygame.image.load(os.path.join('images', 'floor.png')).convert_alpha()
+        door = pygame.image.load(os.path.join('images', 'hurd2.png')).convert_alpha()
         self.sword_texture = pygame.image.load(os.path.join('images', 'swords3.png')).convert_alpha()
         self.sword_icon = pygame.image.load(os.path.join('images', 'sword icon.png')).convert_alpha()
         self.heartTexture = heart
@@ -51,6 +52,7 @@ class GameScene(Scene):
         self.player = Player(pygame.Rect(30, 30, drawSize-1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(0, 72, 47, 72)), character_sprite_size)
 
         self.block_group = pygame.sprite.Group()
+        self.action_group = pygame.sprite.Group()
         self.background_group = pygame.sprite.Group()
         self.grid = Grid(GRID_SIZE)
         self.grand_clock = pygame.time.Clock()
@@ -58,27 +60,12 @@ class GameScene(Scene):
         f = open(os.path.join('rooms', 'room' + str(level)) + ".txt", 'r')
         lines = f.read().splitlines()
         self.levelrect = pygame.Rect(drawSize * 12, drawSize * 4, len(lines[0]) * drawSize, len(lines) * drawSize)
+        self.doors = list()
         for i in xrange(len(lines)):
             for j in xrange(len(lines[i])):
                 rect = pygame.Rect(j * drawSize + self.levelrect.x, i * drawSize + self.levelrect.y, drawSize, drawSize)
                 if lines[i][j] == "W":
-                    sliced = [["W", "W", "W"], ["W", "W", "W"], ["W", "W", "W"]]
-                    if 1 < i:
-                        sliced[0][1] = lines[i-1][j]
-                        if j > 1:
-                            sliced[0][0] = lines[i-1][j-1]
-                        if j < (len(lines[i]) - 1):
-                            sliced[0][2] = lines[i-1][j+1]
-                    if 1 < j:
-                        sliced[1][0] = lines[i][j-1]
-                    if j < (len(lines[i]) - 1):
-                        sliced[1][2] = lines[i][j+1]
-                    if i < (len(lines)-1):
-                        sliced[2][1] = lines[i+1][j]
-                        if 1 < j:
-                            sliced[2][0] = lines[i+1][j-1]
-                        if j < (len(lines[i]) - 1):
-                            sliced[2][2] = lines[i+1][j+1]
+                    sliced = self.make_array_slice(lines, i, j, "W")
                     sprite = self.make_wall_block(walls, sliced)
                     sprite = SimpleRectSprite(rect, sprite.image, True)
                     self.block_group.add(sprite)
@@ -89,6 +76,39 @@ class GameScene(Scene):
                     self.player.realX = j * drawSize + self.levelrect.x
                     self.player.realY = i * drawSize + self.levelrect.y
                     self.player.collision_rect.topleft = (j * drawSize + self.levelrect.x, i * drawSize + self.levelrect.y)
+                if lines[i][j] == "D" or lines[i][j] == "L":
+                    allowed = ["D", "L"]
+                    #Check if vertical door or horizontal door
+                    #If door has already been made, skip this
+                    #Assuming that this is the top-left corner of the door
+                    slice = self.make_array_slice(lines, i, j, "W")
+                    temp_rect = pygame.Rect(rect)
+                    if not (slice[0][1] in allowed or slice[1][0] in allowed):
+                        rotation = 0
+                        if len(lines) - 1 >= (i + 1) and len(lines[i]) - 1 >= (j + 2) and lines[i+1][j+2] in allowed:
+                            if i > len(lines) / 2:
+                                rotation = 180
+                            else:
+                                rotation = 0
+                            temp_rect.w = 75
+                            temp_rect.h = 50
+                        elif len(lines) - 1 >= (i + 2) and len(lines[i]) - 1 >= (j + 1) and lines[i+2][j+1] in allowed:
+                            if j > len(lines[i]) / 2:
+                                rotation = 270
+                            else:
+                                rotation = 90
+                            temp_rect.w = 50
+                            temp_rect.h = 75
+                        else:
+                            print("Level not set up properly.")
+                            raise Exception
+                        inner_rect = pygame.Rect(0, 0, 75, 50) if lines[i][j] == "D" else pygame.Rect(75, 0, 75, 50)
+                        door_texture = door.copy().subsurface(inner_rect)
+                        door_texture = pygame.transform.rotate(door_texture, rotation)
+                        temp_door = Door(temp_rect, door_texture, rotation, door, True if lines[i][j] == "L" else False)
+                        self.doors.append(temp_door)
+                        self.action_group.add(temp_door)
+                        self.collidables.append(temp_door)
                 if lines[i][j] != "W":
                     sprite = SimpleRectSprite(rect, floor_tile, True)
                     sprite.image = pygame.transform.rotate(sprite.image, random.randrange(0, 360, 90))
@@ -118,6 +138,7 @@ class GameScene(Scene):
         for box in self.character_collision_boxes:
             screen.blit(self.shadow, box.rect.midleft)
         self.block_group.draw(screen)
+        self.action_group.draw(screen)
         if not 315 >= self.player.direction >= 180:
             screen.blit(self.swordsprite.image, self.swordsprite.rect)
             self.entities.draw(screen)
@@ -144,6 +165,11 @@ class GameScene(Scene):
             if type(entity) is not Player:
                 entity.update_speed()
             entity.update_position(time, self.collidables + self.character_collision_boxes)
+        for x in xrange(len(self.collidables)):
+            if x == len(self.collidables):
+                break
+            if not self.collidables[x].alive():
+                self.collidables.pop(x)
 
     def handle_events(self, events):
         for event in events:
@@ -159,6 +185,8 @@ class GameScene(Scene):
                 if Animation("sword") not in self.animations:
                     params = {'sprite': self.sword_texture, 'phase': 0}
                     self.animations.append(Animation("sword", params))
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_x:
+                pygame.event.post(pygame.event.Event(actionEvent))
             if event.type == pygame.KEYDOWN or event.type == pygame.KEYUP:
                 self.player.update_speed()
             if event.type == pathfindingEvent:
@@ -204,7 +232,6 @@ class GameScene(Scene):
                             self.swordsprite.rect.top += 5
                             pass
                         s.phase += 1
-
                     #Animations needed:
                         #Sword swing x
                         #Death
@@ -213,6 +240,7 @@ class GameScene(Scene):
                     if s.name == "health":
                         if s.phase >= 13:
                             self.animations.remove(s)
+                            pygame.event.post(pygame.event.Event(healthEvent))
                             continue
                         s.sprite.image = SimpleRectSprite(pygame.Rect(s.sprite.rect), self.heartTexture.subsurface(pygame.Rect((s.phase) * 8, 0, 8, 8)), True).image
                         s.phase += 1
@@ -235,36 +263,20 @@ class GameScene(Scene):
                         char.update_sprite()
 
             if event.type == swordSwingEvent:
-                boxes = list()
-                for i in xrange(0, 360, 45):
-                    block = pygame.Rect(0, 0, self.player.collision_rect.w, self.player.collision_rect.w)
-                    if i == 0 or i == 45 or i == 315:
-                        block.bottom = self.player.collision_rect.top
-                    elif i == 90 or i == 270:
-                        block.top = self.player.collision_rect.top
-                    elif 135 <= i <= 225:
-                        block.top = self.player.collision_rect.bottom
-                    if 225 <= i <= 360:
-                        block.right = self.player.collision_rect.left
-                    elif i == 0 or i == 180:
-                        block.left = self.player.collision_rect.left
-                    elif 45 <= i <= 135:
-                        block.left = self.player.collision_rect.right
-                    boxes.append(Block(block, BLACK))
+                boxes = self.make_surrounding_blocks(self.player.collision_rect)
                 blocks = pygame.sprite.Group()
                 blocks.add(boxes[self.player.direction/45])
-                blocks.add(boxes[((self.player.direction/45) + 1) % 8])
+                #blocks.add(boxes[((self.player.direction/45) + 1) % 8])
                 for sprite in pygame.sprite.groupcollide(self.npcs, blocks, False, True):
-                    sprite.stun()
+                    sprite.hit()
+
             if event.type == unstunEvent:
                 for entity in self.entities:
                     if entity.stunned:
                         entity.stunned = False
                     if entity.health <= 0:
-                        self.entities.remove(entity)
-                        self.npcs.remove(entity)
+                        entity.kill()
                         entity = None
-                        #Set death animation here
 
             if event.type == healthEvent:
                 if self.player.health > self.player.maxHealth:
@@ -276,13 +288,25 @@ class GameScene(Scene):
                     params = {'sprite': self.heartList[self.player.displayHealth-1],
                               'jumpdistance': 8, 'phase': 0, }
                     self.animations.append(Animation("health", params))
-                    self.player.displayHealth = self.player.health
+                    self.player.displayHealth -= 1
+
+            if event.type == actionEvent:
+                surrounding_blocks = self.make_surrounding_blocks(self.player.collision_rect)
+                blocks = pygame.sprite.Group()
+                blocks.add(surrounding_blocks[self.player.direction / 45], Block(self.player.collision_rect, BLACK))
+                for door in pygame.sprite.groupcollide(self.doors, blocks, False, False):
+                    if not door.locked:
+                        if not door.is_open:
+                            door.toggle()
+                    elif self.player.keys > 0:
+                        self.player.keys -= 1
+                        door.unlock()
 
     def make_wall_block(self, wall_texture, array_slice):
         rect = pygame.Rect(0, 0, 24, 24)
         sprite = Block(rect, BLACK)
         rotated = list(array_slice)
-        blocked = ["W", "D"]
+        blocked = ["W", "D", "L"]
         for i2 in xrange(4):
             innerRect = pygame.Rect(0, 0, 12, 12)
             if rotated[1][0] not in blocked:
@@ -305,6 +329,44 @@ class GameScene(Scene):
             sprite.image = pygame.transform.rotate(sprite.image, -90)
         return sprite
 
+    def make_array_slice(self, array, i, j, filler):
+        sliced = [[filler, filler, filler], [filler, filler, filler], [filler, filler, filler]]
+        if 1 <= i:
+            sliced[0][1] = array[i - 1][j]
+            if j >= 1:
+                sliced[0][0] = array[i - 1][j - 1]
+            if j < (len(array[i]) - 1):
+                sliced[0][2] = array[i - 1][j + 1]
+        if 1 <= j:
+            sliced[1][0] = array[i][j - 1]
+        if j < (len(array[i]) - 1):
+            sliced[1][2] = array[i][j + 1]
+        if i < (len(array) - 1):
+            sliced[2][1] = array[i + 1][j]
+            if 1 <= j:
+                sliced[2][0] = array[i + 1][j - 1]
+            if j < (len(array[i]) - 1):
+                sliced[2][2] = array[i + 1][j + 1]
+        return sliced
+
+    def make_surrounding_blocks(self, rect):
+        boxes = list()
+        for i in xrange(0, 360, 45):
+            block = pygame.Rect(0, 0, rect.w, rect.w)
+            if i == 0 or i == 45 or i == 315:
+                block.bottom = rect.top
+            elif i == 90 or i == 270:
+                block.top = rect.top
+            elif 135 <= i <= 225:
+                block.top = rect.bottom
+            if 225 <= i <= 360:
+                block.right = rect.left
+            elif i == 0 or i == 180:
+                block.left = rect.left
+            elif 45 <= i <= 135:
+                block.left = rect.right
+            boxes.append(Block(block, BLACK))
+        return boxes
 
 class TitleScene(Scene):
 
