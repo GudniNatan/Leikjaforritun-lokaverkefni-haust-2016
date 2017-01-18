@@ -355,7 +355,7 @@ class GameScene(Scene):
             sliced[0][1] = array[i - 1][j]
             if j >= 1:
                 sliced[0][0] = array[i - 1][j - 1]
-            if j < (len(array[i]) - 1) and j < (len(array[i + 1]) - 1):
+            if j < (len(array[i]) - 1):
                 sliced[0][2] = array[i - 1][j + 1]
         if 1 <= j:
             sliced[1][0] = array[i][j - 1]
