@@ -17,8 +17,8 @@ def main():
     charset = pygame.image.load(os.path.join('images', 'charset.png')).convert_alpha()
     gridImage = pygame.image.load(os.path.join('images', 'grid 16x16 transculent.png')).convert_alpha()
     gridImage = pygame.transform.scale(gridImage, (gridImage.get_rect().w * 24 / 16, gridImage.get_rect().h * 24 / 16))
-    manager = SceneMananger()
     pygame.mixer.init()
+    manager = SceneMananger()
     pygame.time.set_timer(pathfindingEvent, 500)
     pygame.time.set_timer(animationEvent, 1000 / 24)
     running = True

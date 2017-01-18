@@ -56,6 +56,8 @@ class GameScene(Scene):
         self.background_group = pygame.sprite.Group()
         self.grid = Grid(GRID_SIZE)
         self.grand_clock = pygame.time.Clock()
+        self.camera = pygame.Rect(0, 0, window_width, window_height)
+        self.gameSurface = pygame.Surface((4000, 4000))
 
         f = open(os.path.join('rooms', 'room' + str(level)) + ".txt", 'r')
         lines = f.read().splitlines()
@@ -90,20 +92,21 @@ class GameScene(Scene):
                                 rotation = 180
                             else:
                                 rotation = 0
-                            temp_rect.w = 75
-                            temp_rect.h = 50
+                            temp_rect.w = drawSize * 3
+                            temp_rect.h = drawSize * 2
                         elif len(lines) - 1 >= (i + 2) and len(lines[i]) - 1 >= (j + 1) and lines[i+2][j+1] in allowed:
                             if j > len(lines[i]) / 2:
                                 rotation = 270
                             else:
                                 rotation = 90
-                            temp_rect.w = 50
-                            temp_rect.h = 75
+                            temp_rect.w = drawSize * 2
+                            temp_rect.h = drawSize * 3
                         else:
                             print("Level not set up properly.")
                             raise Exception
                         inner_rect = pygame.Rect(0, 0, 75, 50) if lines[i][j] == "D" else pygame.Rect(75, 0, 75, 50)
                         door_texture = door.copy().subsurface(inner_rect)
+                        door_texture = pygame.transform.scale(door_texture, (drawSize * 3, drawSize * 2))
                         door_texture = pygame.transform.rotate(door_texture, rotation)
                         temp_door = Door(temp_rect, door_texture, rotation, door, True if lines[i][j] == "L" else False)
                         self.doors.append(temp_door)
@@ -132,26 +135,32 @@ class GameScene(Scene):
         self.swordsprite = SimpleSprite(self.player.rect.midtop, pygame.Surface((0, 0)))
 
     def render(self, screen):
-        screen.fill(BLACK)
-        self.background_group.draw(screen)
+        #Game surface
+        gameSurface = self.gameSurface
+        background = pygame.Surface((screen.get_width(), screen.get_height()))
+        background.fill(BLACK)
+        gameSurface.blit(background, self.camera)
+        self.background_group.draw(gameSurface)
 
         for box in self.character_collision_boxes:
-            screen.blit(self.shadow, box.rect.midleft)
-        self.block_group.draw(screen)
-        self.action_group.draw(screen)
+            gameSurface.blit(self.shadow, box.rect.midleft)
+        self.block_group.draw(gameSurface)
+        self.action_group.draw(gameSurface)
         if not 315 >= self.player.direction >= 180:
-            screen.blit(self.swordsprite.image, self.swordsprite.rect)
-            self.entities.draw(screen)
+            gameSurface.blit(self.swordsprite.image, self.swordsprite.rect)
+            self.entities.draw(gameSurface)
         else:
-            self.entities.draw(screen)
-            screen.blit(self.swordsprite.image, self.swordsprite.rect)
+            self.entities.draw(gameSurface)
+            gameSurface.blit(self.swordsprite.image, self.swordsprite.rect)
+        pygame.draw.rect(gameSurface, BLACK, self.levelrect, 6)
+        screen.blit(gameSurface.subsurface(self.camera), (0, 0))
+        #UI
         self.hearts.draw(screen)
         if self.paused:
             line_rect1 = pygame.Rect(screen.get_rect().w / 32 * 31, screen.get_rect().h / 16, screen.get_rect().w / 64, screen.get_rect().w / 64 * 3)
             line_rect2 = pygame.Rect(screen.get_rect().w / 32 * 30, screen.get_rect().h / 16, screen.get_rect().w / 64, screen.get_rect().w / 64 * 3)
             pygame.draw.rect(screen, RED, line_rect1)
             pygame.draw.rect(screen, RED, line_rect2)
-        pygame.draw.rect(screen, BLACK, self.levelrect, 6)
         screen.blit(self.swordsprite.image, (0,0))
         screen.blit(self.sword_icon.subsurface(pygame.Rect(0, 0, 44, 44)), (1000, 50))
 
@@ -170,6 +179,17 @@ class GameScene(Scene):
                 break
             if not self.collidables[x].alive():
                 self.collidables.pop(x)
+        #Update camera rect
+        self.camera.centerx = self.player.collision_rect.centerx
+        self.camera.centery = self.player.collision_rect.centery
+        if self.camera.x < 0:
+            self.camera.x = 0
+        if self.camera.y < 0:
+            self.camera.y = 0
+        if self.camera.right > self.gameSurface.get_width():
+            self.camera.right = self.gameSurface.get_width()
+        if self.camera.bottom > self.gameSurface.get_height():
+            self.camera.bottom = self.gameSurface.get_height()
 
     def handle_events(self, events):
         for event in events:
@@ -335,7 +355,7 @@ class GameScene(Scene):
             sliced[0][1] = array[i - 1][j]
             if j >= 1:
                 sliced[0][0] = array[i - 1][j - 1]
-            if j < (len(array[i]) - 1):
+            if j < (len(array[i]) - 1) and j < (len(array[i + 1]) - 1):
                 sliced[0][2] = array[i - 1][j + 1]
         if 1 <= j:
             sliced[1][0] = array[i][j - 1]
