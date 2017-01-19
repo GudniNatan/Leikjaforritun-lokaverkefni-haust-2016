@@ -54,13 +54,13 @@ class GameScene(Scene):
         self.block_group = pygame.sprite.Group()
         self.action_group = pygame.sprite.Group()
         self.background_group = pygame.sprite.Group()
-        self.grid = Grid(GRID_SIZE)
         self.grand_clock = pygame.time.Clock()
         self.camera = pygame.Rect(0, 0, window_width, window_height)
-        self.gameSurface = pygame.Surface((4000, 4000))
+        self.gameSurface = pygame.Surface((3000, 1800))
 
         f = open(os.path.join('rooms', 'room' + str(level)) + ".txt", 'r')
         lines = f.read().splitlines()
+        self.grid = Grid([len(lines), len(lines[0])])
         self.levelrect = pygame.Rect(drawSize * 12, drawSize * 4, len(lines[0]) * drawSize, len(lines) * drawSize)
         self.doors = list()
         for i in xrange(len(lines)):
@@ -133,27 +133,31 @@ class GameScene(Scene):
                 self.heartList.append(SimpleRectSprite(rect, heart.subsurface(pygame.Rect(8*12, 0, 8, 8)), True))
         self.hearts = pygame.sprite.Group(self.heartList)
         self.swordsprite = SimpleSprite(self.player.rect.midtop, pygame.Surface((0, 0)))
+        """self.backgroundFill = pygame.Surface((window_size))
+        self.backgroundFill.fill(BLACK)
+        self.gameSurface.blit(self.backgroundFill, self.camera)"""
+        self.backgroundSurface = pygame.Surface((3000, 1800))
+        self.backgroundSurface.fill(BLACK)
+
+        self.block_group.draw(self.backgroundSurface)
+        self.background_group.draw(self.backgroundSurface)
+
 
     def render(self, screen):
         #Game surface
-        gameSurface = self.gameSurface
-        background = pygame.Surface((screen.get_width(), screen.get_height()))
-        background.fill(BLACK)
-        gameSurface.blit(background, self.camera)
-        self.background_group.draw(gameSurface)
-
+        self.gameSurface.blit(self.backgroundSurface, (0,0))
         for box in self.character_collision_boxes:
-            gameSurface.blit(self.shadow, box.rect.midleft)
-        self.block_group.draw(gameSurface)
-        self.action_group.draw(gameSurface)
+            self.gameSurface.blit(self.shadow, box.rect.midleft)
+        self.action_group.draw(self.gameSurface)
         if not 315 >= self.player.direction >= 180:
-            gameSurface.blit(self.swordsprite.image, self.swordsprite.rect)
-            self.entities.draw(gameSurface)
+            self.gameSurface.blit(self.swordsprite.image, self.swordsprite.rect)
+            self.entities.draw(self.gameSurface)
         else:
-            self.entities.draw(gameSurface)
-            gameSurface.blit(self.swordsprite.image, self.swordsprite.rect)
-        pygame.draw.rect(gameSurface, BLACK, self.levelrect, 6)
-        screen.blit(gameSurface.subsurface(self.camera), (0, 0))
+            self.entities.draw(self.gameSurface)
+            self.gameSurface.blit(self.swordsprite.image, self.swordsprite.rect)
+        pygame.draw.rect(self.gameSurface, BLACK, self.levelrect, 6)
+        screen.blit(self.gameSurface.subsurface(self.camera), (0, 0))
+        #screen.blit(pygame.transform.scale(gameSurface, window_size), (0, 0))
         #UI
         self.hearts.draw(screen)
         if self.paused:
@@ -184,11 +188,11 @@ class GameScene(Scene):
         self.camera.centery = self.player.collision_rect.centery
         if self.camera.x < 0:
             self.camera.x = 0
+        elif self.camera.right > self.gameSurface.get_width():
+            self.camera.right = self.gameSurface.get_width()
         if self.camera.y < 0:
             self.camera.y = 0
-        if self.camera.right > self.gameSurface.get_width():
-            self.camera.right = self.gameSurface.get_width()
-        if self.camera.bottom > self.gameSurface.get_height():
+        elif self.camera.bottom > self.gameSurface.get_height():
             self.camera.bottom = self.gameSurface.get_height()
 
     def handle_events(self, events):
@@ -210,6 +214,7 @@ class GameScene(Scene):
             if event.type == pygame.KEYDOWN or event.type == pygame.KEYUP:
                 self.player.update_speed()
             if event.type == pathfindingEvent:
+
                 for char in self.npcs:
                     if type(char) is Stalker:
                         char.update_path(self.grid.grid, char.gridPos, self.player.gridPos)
@@ -318,6 +323,7 @@ class GameScene(Scene):
                     if not door.locked:
                         if not door.is_open:
                             door.toggle()
+                            self.grid.update_grid(self.collidables + self.character_collision_boxes)
                     elif self.player.keys > 0:
                         self.player.keys -= 1
                         door.unlock()

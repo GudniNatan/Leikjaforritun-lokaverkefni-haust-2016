@@ -1,4 +1,4 @@
-# Gudni Natan Gunnarsson, 2016
+ # Gudni Natan Gunnarsson, 2016
 from Constants import *
 
 
