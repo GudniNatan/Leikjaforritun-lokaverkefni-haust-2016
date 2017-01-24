@@ -7,7 +7,7 @@ WW                       WW                                                WW
 WW           C      S    WW                                    S           WW
 WW                       WW                                                WW
 WW           W           WW                                                WW
-DD          WWW          DD                                                WW
+LD          WWW          DD                                                WW
 DD         WWWWW         DD                                                WW
 DD          WWW          DD                                                WW
 WW           W           WW                                                WW
@@ -17,8 +17,8 @@ WW           S           WW                                    S           WW
 WW                       WW                                                WW
 WW                       WW                                                WW
 WWW                     WWWW                                               WW
-WWWWWWWWWWWWLDDWWWWWWWWWW  WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
-WWWWWWWWWWWWDDDWWWWWWWWWW  WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+WWWWWWWWWWWWLDDWWWWWWWWWW  WWWWWWWWWWWWWDDDWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+WWWWWWWWWWWWDDDWWWWWWWWWW  WWWWWWWWWWWWWDDDWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 WWW                     WWWW
 WW                       WW
 WW                       WW
@@ -26,7 +26,7 @@ WW                       WW
 WW           C      S    WW
 WW                       WW
 WW           W           WW
-DD          WWW          DD
+DD          WWW          LD
 DD         WWWWW         DD
 DD          WWW          DD
 WW           W           WW

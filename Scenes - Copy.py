@@ -33,10 +33,8 @@ class Scene(object):
 
 
 class GameScene(Scene):
-    def __init__(self, level=0):
+    def __init__(self, level):
         super(GameScene, self).__init__()
-        lines = get_room(level)
-        lineLength = len(max(lines, key=len))
         charset = pygame.image.load(os.path.join('images', 'charset.png')).convert_alpha()
         shadow = pygame.image.load(os.path.join('images', 'shadow.png')).convert_alpha()
         walls = pygame.image.load(os.path.join('images', 'veggur2.png')).convert_alpha()
@@ -58,53 +56,45 @@ class GameScene(Scene):
         self.action_group = pygame.sprite.Group()
         self.background_group = pygame.sprite.Group()
         self.grand_clock = pygame.time.Clock()
-        self.levelrect = pygame.Rect(0, 0, lineLength * drawSize, len(lines) * drawSize)
-        self.gameSurface = pygame.Surface(self.levelrect.size)
-        self.camera = pygame.Rect(0, 0, min(window_width, self.gameSurface.get_width()), min(window_height, self.gameSurface.get_height()))
+        self.camera = pygame.Rect(0, 0, window_width, window_height)
+        self.gameSurface = pygame.Surface((3000, 1800))
 
-
+        f = open(os.path.join('rooms', 'room' + str(level)) + ".txt", 'r')
+        lines = f.read().splitlines()
+        lineLength = len(max(lines, key=len))
         self.grid = Grid([len(lines), lineLength])
-        screenrect = pygame.Rect(0, 0, window_width, window_height)
-        self.levelrect.center = screenrect.center
+        self.levelrect = pygame.Rect(drawSize * 12, drawSize * 4, lineLength * drawSize, len(lines) * drawSize)
         self.doors = list()
-        """ Guide to level element codes:
-        Stone floor  = 0
-        Stone wall = 1
-        Wood door = 2, add a "L" to make it locked
-        Player = "Player"
-        Melee enemy = "Stalker"
-        Bow enemy = "Bowman"
-        Chest = Chest(contents)
-        """
         for i in xrange(len(lines)):
             for j in xrange(len(lines[i])):
-                rect = pygame.Rect(j * drawSize, i * drawSize, drawSize, drawSize)
-                if 1 in lines[i][j]:
-                    sliced = self.make_array_slice(lines, i, j, [1]) #array, i, j, filler
+                rect = pygame.Rect(j * drawSize + self.levelrect.x, i * drawSize + self.levelrect.y, drawSize, drawSize)
+                if lines[i][j] == "W":
+                    sliced = self.make_array_slice(lines, i, j, "W")
                     sprite = self.make_wall_block(walls, sliced)
                     sprite = SimpleRectSprite(rect, sprite.image, True)
                     self.block_group.add(sprite)
-                if "Stalker" in lines[i][j]:
+                if lines[i][j] == "S":
                     stalker = Stalker(pygame.Rect(rect.x, rect.y, drawSize-1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(48, 72, 47, 72)), character_sprite_size, self.player)
                     self.npcs.add(stalker)
-                if "Player" in lines[i][j]:
-                    self.player = Player(pygame.Rect(rect.x, rect.y, drawSize - 1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(0, 72, 47, 72)), character_sprite_size)
-                if 2 in lines[i][j]:
+                if lines[i][j] == "P":
+                    self.player = Player(pygame.Rect(j * drawSize + self.levelrect.x, i * drawSize + self.levelrect.y, drawSize - 1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(0, 72, 47, 72)), character_sprite_size)
+                if lines[i][j] == "D" or lines[i][j] == "L":
+                    allowed = ["D", "L"]
                     #Check if vertical door or horizontal door
                     #If door has already been made, skip this
                     #Assuming that this is the top-left corner of the door
-                    slice = self.make_array_slice(lines, i, j, [0])
+                    slice = self.make_array_slice(lines, i, j, "W")
                     temp_rect = pygame.Rect(rect)
-                    if not (2 in slice[0][1] or 2 in slice[1][0]):
+                    if not (slice[0][1] in allowed or slice[1][0] in allowed):
                         rotation = 0
-                        if len(lines) - 1 >= (i + 1) and len(lines[i]) - 1 >= (j + 2) and 2 in lines[i+1][j+2]:
+                        if len(lines) - 1 >= (i + 1) and len(lines[i]) - 1 >= (j + 2) and lines[i+1][j+2] in allowed:
                             if i > len(lines) / 2:
                                 rotation = 180
                             else:
                                 rotation = 0
                             temp_rect.w = drawSize * 3
                             temp_rect.h = drawSize * 2
-                        elif len(lines) - 1 >= (i + 2) and len(lines[i]) - 1 >= (j + 1) and 2 in lines[i+2][j+1]:
+                        elif len(lines) - 1 >= (i + 2) and len(lines[i]) - 1 >= (j + 1) and lines[i+2][j+1] in allowed:
                             if j > len(lines[i]) / 2:
                                 rotation = 270
                             else:
@@ -114,15 +104,15 @@ class GameScene(Scene):
                         else:
                             print("Level not set up properly.")
                             raise Exception
-                        inner_rect = pygame.Rect(75, 0, 75, 50) if "L" in lines[i][j] else pygame.Rect(0, 0, 75, 50)
+                        inner_rect = pygame.Rect(0, 0, 75, 50) if lines[i][j] == "D" else pygame.Rect(75, 0, 75, 50)
                         door_texture = door.copy().subsurface(inner_rect)
                         door_texture = pygame.transform.scale(door_texture, (drawSize * 3, drawSize * 2))
                         door_texture = pygame.transform.rotate(door_texture, rotation)
-                        temp_door = Door(temp_rect, door_texture, rotation, door, True if "L" in lines[i][j] else False)
+                        temp_door = Door(temp_rect, door_texture, rotation, door, True if lines[i][j] == "L" else False)
                         self.doors.append(temp_door)
                         self.action_group.add(temp_door)
                         self.collidables.append(temp_door)
-                if 0 in lines[i][j]:
+                if lines[i][j] not in ["W", "0"]:
                     sprite = SimpleRectSprite(rect, floor_tile, True)
                     sprite.image = pygame.transform.rotate(sprite.image, random.randrange(0, 360, 90))
                     self.background_group.add(sprite)
@@ -136,7 +126,7 @@ class GameScene(Scene):
             self.shadow = pygame.transform.scale(shadow, self.character_collision_boxes[0].rect.size)
         self.heartList = list()
         for i in xrange(self.player.maxHealth):
-            rect = pygame.Rect((drawSize * 10) +(40 * i), 20, 7 * 4, 7 * 4)
+            rect = pygame.Rect(self.levelrect.x + (40 * i), 20, 7 * 4, 7 * 4)
             if self.player.health > i:
                 self.heartList.append(SimpleRectSprite(rect, heart.subsurface(pygame.Rect(0,0,8,8)), True))
             else:
@@ -146,22 +136,15 @@ class GameScene(Scene):
         """self.backgroundFill = pygame.Surface((window_size))
         self.backgroundFill.fill(BLACK)
         self.gameSurface.blit(self.backgroundFill, self.camera)"""
-        self.backgroundSurface = self.gameSurface.copy()
+        self.backgroundSurface = pygame.Surface((3000, 1800))
         self.backgroundSurface.fill(BLACK)
 
         self.block_group.draw(self.backgroundSurface)
         self.background_group.draw(self.backgroundSurface)
-        self.windowRect = pygame.Rect((0, 0), window_size)
-        self.offset = pygame.Rect(0, 0, 0, 0)
-        if self.levelrect.w < window_width:
-            self.offset.x = (window_width - self.levelrect.w) / 2
-        if self.levelrect.h < window_height:
-            self.offset.y = (window_height - self.levelrect.h) / 2
 
 
     def render(self, screen):
         #Game surface
-        screen.fill(BLACK)
         self.gameSurface.blit(self.backgroundSurface, (0,0))
         for box in self.character_collision_boxes:
             self.gameSurface.blit(self.shadow, box.rect.midleft)
@@ -172,8 +155,8 @@ class GameScene(Scene):
         else:
             self.entities.draw(self.gameSurface)
             self.gameSurface.blit(self.swordsprite.image, self.swordsprite.rect)
-        pygame.draw.rect(self.gameSurface, BLACK, pygame.Rect((0, 0), self.levelrect.size), 6)
-        screen.blit(self.gameSurface.subsurface(self.camera), (self.offset.x, self.offset.y))
+        pygame.draw.rect(self.gameSurface, BLACK, self.levelrect, 6)
+        screen.blit(self.gameSurface.subsurface(self.camera), (0, 0))
         #screen.blit(pygame.transform.scale(gameSurface, window_size), (0, 0))
         #UI
         self.hearts.draw(screen)
@@ -349,20 +332,20 @@ class GameScene(Scene):
         rect = pygame.Rect(0, 0, 24, 24)
         sprite = Block(rect, BLACK)
         rotated = list(array_slice)
-        blocked = {1, 2}
+        blocked = ["W", "D", "L"]
         for i2 in xrange(4):
             innerRect = pygame.Rect(0, 0, 12, 12)
-            if len(blocked.intersection(rotated[1][0])) <= 0:
-                if len(blocked.intersection(rotated[0][1])) <= 0:
+            if rotated[1][0] not in blocked:
+                if rotated[0][1] not in blocked:
                     # open corner
                     innerRect.topleft = (12, 12)
                 else:
                     # wall facing left
                     innerRect.topleft = (24, 0)
-            elif len(blocked.intersection(rotated[0][1])) <= 0:
+            elif rotated[0][1] not in blocked:
                 innerRect.topleft = (12, 0)
                 # wall facing up
-            elif len(blocked.intersection(rotated[0][0])) <= 0:
+            elif rotated[0][0] not in blocked:
                 innerRect.topleft = (0, 12)
             if innerRect.topleft == (0, 0):
                 sprite.image.blit(pygame.transform.rotate(wall_texture.subsurface(innerRect), random.randrange(0, 360, 90)), (0, 0))

@@ -66,7 +66,7 @@ class ActionObject(object):
 class Door(SimpleRectSprite):
     def __init__(self, rect, surface, rotation, parent_surface, locked=False, is_open=False, scale=False):
         super(Door, self).__init__(rect, surface, scale)
-        self.is_open = False
+        self.is_open = is_open
         self.rotation = rotation
         self.locked = locked
         if is_open:
@@ -91,7 +91,11 @@ class Door(SimpleRectSprite):
     def unlock(self):
         if not self.locked:
             return
-        self.image = self.parent_surface.subsurface(pygame.Rect(0, 0, self.image.get_width(), self.image.get_height()))
+        if self.rotation % 180 == 0:
+            self.image = self.parent_surface.subsurface(pygame.Rect(0, 0, self.image.get_width(), self.image.get_height()))
+        else:
+            self.image = self.parent_surface.subsurface(pygame.Rect(0, 0, self.image.get_height(), self.image.get_width()))
+            self.image = pygame.transform.rotate(self.image, self.rotation)
         self.locked = False
 
 

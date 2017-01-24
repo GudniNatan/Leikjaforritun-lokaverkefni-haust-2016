@@ -19,8 +19,8 @@ def main():
     gridImage = pygame.transform.scale(gridImage, (gridImage.get_rect().w * 24 / 16, gridImage.get_rect().h * 24 / 16))
     try:
         pygame.mixer.init()
-    except Exception:
-        print("No soundcard detected; attempring to run anyway.")
+    except pygame.error as err:
+        print("Error: " + str(err) + "; attempting to run anyway.")
         print("Please note that you may run into glitches and crashes while in this mode.")
         
     manager = SceneMananger()
@@ -38,7 +38,7 @@ def main():
         manager.scene.handle_events(pygame.event.get())
         manager.scene.update(clock.get_time())
         clock.tick()
-        #print(clock.get_fps())
+        print(clock.get_fps())
 
     pygame.quit()
     sys.exit()
