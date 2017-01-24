@@ -93,13 +93,13 @@ class AStar:
         return index_min
 
     def find_path(self, grid, start, goal, search_range=-1):
-        if search_range != -1 and abs(sum(start) - sum(goal)) > search_range * 1.4:
+        if search_range != -1 and abs(sum(start) - sum(goal)) * 10 > search_range * 14:
             return None
         self.open_list = list()
         self.open_set = set()
         self.closed_set = set()
         self.nodes = list()
-        self.handler = GridHandler(list(grid))
+        self.handler = GridHandler(grid)
         self.goal = goal
         self.start = start
         self.passcount = 0
@@ -132,9 +132,9 @@ class GridHandler:
         self.grid = grid
 
     def create_node(self, location, move_cost, parent=0):
-        grid = self.grid
+        grid = list(self.grid.grid)
         val = location
-        if (0 <= val[0] < GRID_SIZE[0] * 2 + 1 and 0 <= val[1] < GRID_SIZE[1] * 2 + 1) and grid[val[0]][val[1]] == 0:
+        if (0 <= val[0] < self.grid.grid_size[0] * 2 + 1 and 0 <= val[1] < self.grid.grid_size[1] * 2 + 1) and grid[val[0]][val[1]] == 0:
             if not parent:
                 return Node(val, move_cost, parent)
             if grid[parent.value[0]][val[1]] or grid[val[0]][parent.value[1]]:

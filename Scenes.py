@@ -60,8 +60,9 @@ class GameScene(Scene):
 
         f = open(os.path.join('rooms', 'room' + str(level)) + ".txt", 'r')
         lines = f.read().splitlines()
-        self.grid = Grid([len(lines), len(lines[0])])
-        self.levelrect = pygame.Rect(drawSize * 12, drawSize * 4, len(lines[0]) * drawSize, len(lines) * drawSize)
+        lineLength = len(max(lines, key=len))
+        self.grid = Grid([len(lines), lineLength])
+        self.levelrect = pygame.Rect(drawSize * 12, drawSize * 4, lineLength * drawSize, len(lines) * drawSize)
         self.doors = list()
         for i in xrange(len(lines)):
             for j in xrange(len(lines[i])):
@@ -75,9 +76,7 @@ class GameScene(Scene):
                     stalker = Stalker(pygame.Rect(rect.x, rect.y, drawSize-1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(48, 72, 47, 72)), character_sprite_size, self.player)
                     self.npcs.add(stalker)
                 if lines[i][j] == "P":
-                    self.player.realX = j * drawSize + self.levelrect.x
-                    self.player.realY = i * drawSize + self.levelrect.y
-                    self.player.collision_rect.topleft = (j * drawSize + self.levelrect.x, i * drawSize + self.levelrect.y)
+                    self.player = Player(pygame.Rect(j * drawSize + self.levelrect.x, i * drawSize + self.levelrect.y, drawSize - 1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(0, 72, 47, 72)), character_sprite_size)
                 if lines[i][j] == "D" or lines[i][j] == "L":
                     allowed = ["D", "L"]
                     #Check if vertical door or horizontal door
@@ -217,7 +216,7 @@ class GameScene(Scene):
 
                 for char in self.npcs:
                     if type(char) is Stalker:
-                        char.update_path(self.grid.grid, char.gridPos, self.player.gridPos)
+                        char.update_path(self.grid, char.gridPos, self.player.gridPos)
             if event.type == updateGridEvent:
                 self.grid.update_grid(self.collidables + self.character_collision_boxes)
             if event.type == animationEvent:
@@ -358,21 +357,45 @@ class GameScene(Scene):
     def make_array_slice(self, array, i, j, filler):
         sliced = [[filler, filler, filler], [filler, filler, filler], [filler, filler, filler]]
         if 1 <= i:
-            sliced[0][1] = array[i - 1][j]
-            if j >= 1:
-                sliced[0][0] = array[i - 1][j - 1]
-            if j < (len(array[i]) - 1):
-                sliced[0][2] = array[i - 1][j + 1]
+            try:
+                sliced[0][1] = array[i - 1][j]
+            except IndexError:
+                pass
+            try:
+                if j >= 1:
+                    sliced[0][0] = array[i - 1][j - 1]
+            except IndexError:
+                pass
+            try:
+                if j < (len(array[i]) - 1):
+                    sliced[0][2] = array[i - 1][j + 1]
+            except IndexError:
+                pass
         if 1 <= j:
-            sliced[1][0] = array[i][j - 1]
-        if j < (len(array[i]) - 1):
-            sliced[1][2] = array[i][j + 1]
-        if i < (len(array) - 1):
-            sliced[2][1] = array[i + 1][j]
-            if 1 <= j:
-                sliced[2][0] = array[i + 1][j - 1]
+            try:
+                sliced[1][0] = array[i][j - 1]
+            except IndexError:
+                pass
+        try:
             if j < (len(array[i]) - 1):
-                sliced[2][2] = array[i + 1][j + 1]
+                sliced[1][2] = array[i][j + 1]
+        except IndexError:
+            pass
+        if i < (len(array) - 1):
+            try:
+                sliced[2][1] = array[i + 1][j]
+            except IndexError:
+                pass
+            try:
+                if 1 <= j:
+                    sliced[2][0] = array[i + 1][j - 1]
+            except IndexError:
+                pass
+            try:
+                if j < (len(array[i]) - 1):
+                    sliced[2][2] = array[i + 1][j + 1]
+            except IndexError:
+                pass
         return sliced
 
     def make_surrounding_blocks(self, rect):
@@ -501,8 +524,8 @@ class GameOverScene(Scene):
         font = pygame.font.SysFont('Consolas', 56)
         small_font = pygame.font.SysFont('Consolas', 32)
         self.text = font.render('Game Over', True, WHITE)
+        self.text2 = small_font.render('Press space to try again.', True, WHITE)
         if pygame.mixer.get_init():
-            self.text2 = small_font.render('Press space to try again.', True, WHITE)
             self.mixer = pygame.mixer.Channel(0)
             self.mixer.set_volume(0.5)
             self.music = pygame.mixer.Sound(os.path.join('sounds', 'tengsli 1.1 loop.ogg'))

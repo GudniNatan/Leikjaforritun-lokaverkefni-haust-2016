@@ -106,6 +106,8 @@ class Character(pygame.sprite.Sprite):
         pass
 
     def update_position(self, time, collidables):
+        if self.vx == 0 and self.vy == 0:
+            return
         if time == 0:
             pygame.time.wait(1)
             time = 1
@@ -130,9 +132,6 @@ class Character(pygame.sprite.Sprite):
 
         for object in collidables:
             if object == self.collision_rect:
-                continue
-            if (max(rect.center[0], object.rect.center[0]) - min(rect.center[0], object.rect.center[0]) > max(rect.w, object.rect.w) * 2 or
-                    max(rect.center[1], object.rect.center[1]) - min(rect.center[1], object.rect.center[1]) > max(rect.h, object.rect.h) * 2):
                 continue
             if object.rect.colliderect(next_location):
                 # Flats

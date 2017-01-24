@@ -38,7 +38,7 @@ def main():
         manager.scene.handle_events(pygame.event.get())
         manager.scene.update(clock.get_time())
         clock.tick()
-        print(clock.get_fps())
+        #print(clock.get_fps())
 
     pygame.quit()
     sys.exit()
