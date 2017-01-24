@@ -17,7 +17,12 @@ def main():
     charset = pygame.image.load(os.path.join('images', 'charset.png')).convert_alpha()
     gridImage = pygame.image.load(os.path.join('images', 'grid 16x16 transculent.png')).convert_alpha()
     gridImage = pygame.transform.scale(gridImage, (gridImage.get_rect().w * 24 / 16, gridImage.get_rect().h * 24 / 16))
-    pygame.mixer.init()
+    try:
+        pygame.mixer.init()
+    except Exception:
+        print("No soundcard detected; attempring to run anyway.")
+        print("Please note that you may run into glitches and crashes while in this mode.")
+        
     manager = SceneMananger()
     pygame.time.set_timer(pathfindingEvent, 500)
     pygame.time.set_timer(animationEvent, 1000 / 24)

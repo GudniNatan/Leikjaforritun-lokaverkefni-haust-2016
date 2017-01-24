@@ -163,8 +163,8 @@ class GameScene(Scene):
         if self.paused:
             line_rect1 = pygame.Rect(screen.get_rect().w / 32 * 31, screen.get_rect().h / 16, screen.get_rect().w / 64, screen.get_rect().w / 64 * 3)
             line_rect2 = pygame.Rect(screen.get_rect().w / 32 * 30, screen.get_rect().h / 16, screen.get_rect().w / 64, screen.get_rect().w / 64 * 3)
-            pygame.draw.rect(screen, RED, line_rect1)
-            pygame.draw.rect(screen, RED, line_rect2)
+            pygame.draw.rect(screen, WHITE, line_rect1)
+            pygame.draw.rect(screen, WHITE, line_rect2)
         screen.blit(self.swordsprite.image, (0,0))
         screen.blit(self.sword_icon.subsurface(pygame.Rect(0, 0, 44, 44)), (1000, 50))
 
@@ -404,10 +404,11 @@ class TitleScene(Scene):
         self.logo_sprite = SimpleRectSprite(pygame.Rect(425, 325, 400, 400), self.logo, True)
         self.font = pygame.font.SysFont('Consolas', 56)
         self.sfont = pygame.font.SysFont('Consolas', 32)
-        self.mixer = pygame.mixer.Channel(0)
-        self.mixer.set_volume(0.8)
-        self.music = pygame.mixer.Sound(os.path.join('sounds', 'abba lite.ogg'))
-        self.mixer.play(self.music)
+        if pygame.mixer.get_init():
+            self.mixer = pygame.mixer.Channel(0)
+            self.mixer.set_volume(0.8)
+            self.music = pygame.mixer.Sound(os.path.join('sounds', 'abba lite.ogg'))
+            self.mixer.play(self.music)
         self.color = [50, 50, 50]
         self.colorLevel = [True, True, True]
         self.textCoord = 300
@@ -431,7 +432,8 @@ class TitleScene(Scene):
             if event.type == pygame.QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
                 pygame.event.post(pygame.event.Event(QUIT))
             if event.type == KEYDOWN and event.key == K_SPACE:
-                self.mixer.fadeout(500)
+                if pygame.mixer.get_init():
+                    self.mixer.fadeout(500)
                 self.manager.go_to(GameScene(0))
             if event.type == animationEvent:
                 for i in range(3):
@@ -499,11 +501,12 @@ class GameOverScene(Scene):
         font = pygame.font.SysFont('Consolas', 56)
         small_font = pygame.font.SysFont('Consolas', 32)
         self.text = font.render('Game Over', True, WHITE)
-        self.text2 = small_font.render('Press space to try again.', True, WHITE)
-        self.mixer = pygame.mixer.Channel(0)
-        self.mixer.set_volume(0.5)
-        self.music = pygame.mixer.Sound(os.path.join('sounds', 'tengsli 1.1 loop.ogg'))
-        self.mixer.play(self.music, -1,)
+        if pygame.mixer.get_init():
+            self.text2 = small_font.render('Press space to try again.', True, WHITE)
+            self.mixer = pygame.mixer.Channel(0)
+            self.mixer.set_volume(0.5)
+            self.music = pygame.mixer.Sound(os.path.join('sounds', 'tengsli 1.1 loop.ogg'))
+            self.mixer.play(self.music, -1,)
 
     def render(self, screen):
         screen.fill(BLACK)
@@ -518,6 +521,7 @@ class GameOverScene(Scene):
             if event.type == pygame.QUIT:
                 pygame.event.post(pygame.event.Event(QUIT))
             if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_ESCAPE):
-                self.mixer.fadeout(500)
+                if pygame.mixer.get_init():
+                    self.mixer.fadeout(500)
                 self.manager.go_to(TitleScene())
 
