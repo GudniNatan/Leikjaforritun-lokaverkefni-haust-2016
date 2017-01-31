@@ -9,9 +9,9 @@ from Scenes import *
 def main():
     # Pygame stuff
     pygame.init()
-    screen = pygame.display.set_mode(window_size, pygame.RESIZABLE|pygame.DOUBLEBUF)
+    screen = pygame.display.set_mode(window_size, pygame.DOUBLEBUF)
     clock = pygame.time.Clock()
-    pygame.display.set_caption('FOR3G3U')
+    pygame.display.set_caption('FOR3L3DU')
 
     # Setup
     charset = pygame.image.load(os.path.join('images', 'charset.png')).convert_alpha()
@@ -25,8 +25,10 @@ def main():
         
     manager = SceneMananger()
     pygame.time.set_timer(pathfindingEvent, 500)
-    pygame.time.set_timer(animationEvent, 1000 / 24)
+    pygame.time.set_timer(animationEvent, 42)  # approx 24 times per second
     running = True
+
+    sfont = pygame.font.SysFont('Consolas', 12)
 
     # Game loop
     while running:
@@ -34,11 +36,13 @@ def main():
             running = False
             return
         manager.scene.render(screen)
+        text1 = sfont.render("fps:" + str(clock.get_fps()), False, WHITE)
+        screen.blit(text1, (0, 0))
         pygame.display.update()
         manager.scene.handle_events(pygame.event.get())
         manager.scene.update(clock.get_time())
         clock.tick()
-        print(clock.get_fps())
+        #print(clock.get_fps())
 
     pygame.quit()
     sys.exit()

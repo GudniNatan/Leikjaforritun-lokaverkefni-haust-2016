@@ -180,7 +180,6 @@ class Player(Character):
     def __init__(self, rect, charset, sprite_size_rect):
         super(Player, self).__init__(rect, charset, sprite_size_rect)
         self.score = 5
-        self.kitCount = 0
         self.direction = 180
         self.displayHealth = self.health
         self.keys = 1
@@ -209,6 +208,29 @@ class Player(Character):
                 self.vy /= 1.4
         self.set_sprite_direction()
 
+    def update_player(self, rect, direction):
+        self.collision_rect = rect
+        self.vx = 0
+        self.vy = 0
+        self.realX = self.collision_rect.x
+        self.realY = self.collision_rect.y
+        self.startPoint = [self.collision_rect.x, self.collision_rect.y]
+        self.gridPos = [self.collision_rect.center[0] / drawSize, self.collision_rect.center[1] / drawSize]
+        self.image = pygame.Surface((0, 0))
+        self.direction = direction
+        self.last_direction = None
+        self.directionLock = False
+        self.set_sprite_direction()
+        self.rect = self.image.get_rect()
+        self.rect.midbottom = (rect.centerx, rect.bottom - 1)
+        self.collision_rect.w = 20
+        self.walking_phase = 1
+        self.moving = False
+        self.stunned = False
+        self.next_location = self.collision_rect
+        self.red_blink = False
+        self.displayHealth = self.health
+
 
 class NPC(Character):
     def __init__(self, rect, charset, sprite_size_rect):
@@ -219,7 +241,7 @@ class NPC(Character):
 
     def update_path(self, grid, position, destination):
         # NPC Pathfinding
-        p = self.pathfinder.find_path(grid, position, destination, 8)
+        p = self.pathfinder.find_path(grid, position, destination, 12)
         path = list()
         if p is not None:
             self.path = p.nodes
@@ -270,3 +292,41 @@ class Stalker(NPC):
             if not self.player.stunned:
                 self.player.hit()
 
+class Bowman(NPC):
+
+    # Will attempt to get a straight line shot at the player, and back up if the player is too close.
+    def __init__(self, rect, charset, sprite_size_rect, player):
+        super(Bowman, self).__init__(rect, charset, sprite_size_rect)
+        self.baseSpeed = 0.04
+        self.player = player
+    def update_speed(self):
+        # Follows path
+        path = self.path
+        if path is None or not path:
+            self.vx = 0
+            self.vy = 0
+            return
+        speed = self.baseSpeed
+        rect = self.collision_rect
+        next_square = path[0].value
+        if next_square[0] < rect.right / drawSize:
+            self.vx = -speed
+        elif next_square[0] > rect.left / drawSize:
+            self.vx = speed
+        else:
+            self.vx = 0
+        if next_square[1] < rect.bottom / drawSize:
+            self.vy = -speed
+        elif next_square[1] > rect.top / drawSize:
+            self.vy = speed
+        else:
+            self.vy = 0
+        self.set_sprite_direction()
+
+        if self.vx == self.vy == 0:
+            self.path.pop(0)
+
+    def update_position(self, time, collidables):
+        if self.stunned:
+            return
+        super(Bowman, self).update_position(time, collidables)

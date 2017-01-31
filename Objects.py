@@ -2,7 +2,6 @@ import pygame
 from Constants import *
 from pygame.locals import *
 
-
 class Brick(object):
     def __init__(self, x, y, size):
         self.rect = pygame.Rect(x, y, size, size)
@@ -145,6 +144,29 @@ class Animation(object):
     def __eq__(self, other):
         return self.name == other.name
 
+class Trigger(object):
+    def __init__(self, name, rect, params=dict()):
+        super(Trigger, self).__init__()
+        self.name = name
+        self.rect = rect
+        self.params = params
+        for key, value in params.iteritems():
+            setattr(self, key, value)
+
+    def set_place(self, level):
+        try:
+            for i in range(len(level)):
+                for j in range(len(level[i])):
+                    if self.placeWhere in level[i][j]:
+                        if self.rect.size == (0, 0):
+                            self.rect = pygame.Rect(j * drawSize, i * drawSize, drawSize, drawSize)
+                        else:
+                            self.rect = self.rect.union(pygame.Rect(j * drawSize, i * drawSize, drawSize, drawSize))
+        except:
+            pass
+
+
+
 
 class Grid(object):
     def __init__(self, grid_size):
@@ -153,7 +175,7 @@ class Grid(object):
 
     def make_grid(self):
         grid_size = self.grid_size
-        grid = [[0 for i in xrange((grid_size[1] * 2) + 1)] for j in xrange((grid_size[0] * 2) + 1)]
+        grid = [[0 for i in xrange(grid_size[1])] for j in xrange(grid_size[0])]
         self.grid = grid
 
     def update_grid(self, collidables, resolution=1):

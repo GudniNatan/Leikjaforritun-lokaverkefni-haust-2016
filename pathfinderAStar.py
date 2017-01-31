@@ -134,7 +134,7 @@ class GridHandler:
     def create_node(self, location, move_cost, parent=0):
         grid = list(self.grid.grid)
         val = location
-        if (0 <= val[0] < self.grid.grid_size[0] * 2 + 1 and 0 <= val[1] < self.grid.grid_size[1] * 2 + 1) and grid[val[0]][val[1]] == 0:
+        if (0 <= val[0] < self.grid.grid_size[0] and 0 <= val[1] < self.grid.grid_size[1] ) and grid[val[0]][val[1]] == 0:
             if not parent:
                 return Node(val, move_cost, parent)
             if grid[parent.value[0]][val[1]] or grid[val[0]][parent.value[1]]:
