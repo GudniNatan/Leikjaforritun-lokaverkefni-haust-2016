@@ -23,3 +23,4 @@ unstunEvent = USEREVENT+6
 healthEvent = USEREVENT+7
 actionEvent = USEREVENT+8
 moveEvent = USEREVENT+9
+keyEvent = USEREVENT+10

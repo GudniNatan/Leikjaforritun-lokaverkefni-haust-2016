@@ -182,7 +182,7 @@ class Player(Character):
         self.score = 5
         self.direction = 180
         self.displayHealth = self.health
-        self.keys = 1
+        self.keys = 3
 
     def update_speed(self):
         keys = pygame.key.get_pressed()

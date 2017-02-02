@@ -23,7 +23,7 @@ def main():
         print("Error: " + str(err) + "; attempting to run anyway.")
         print("Please note that you may run into glitches and crashes while in this mode.")
         
-    manager = SceneMananger()
+    manager = SceneManager()
     pygame.time.set_timer(pathfindingEvent, 500)
     pygame.time.set_timer(animationEvent, 42)  # approx 24 times per second
     running = True

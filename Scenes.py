@@ -3,13 +3,15 @@ from pygame.locals import *
 import os
 from Constants import *
 from Characters_sprites import *
+from Methods import *
 from Objects import *
 import random
 import codecs
+import threading
 from math import sin
 from rooms import get_room
 
-class SceneMananger(object):
+class SceneManager(object):
     def __init__(self):
         self.go_to(TitleScene())
 
@@ -32,9 +34,12 @@ class Scene(object):
 
 
 class GameScene(Scene):
-    def __init__(self, level=0, player=None, playerLocation=None):
+    def __init__(self, room=0, player=None, playerLocation=None):
         super(GameScene, self).__init__()
-        lines = get_room(level)
+        lines = get_room(room)
+        self.lines = lines
+        self.nextScene = None
+        self.nextSceneThread = None
         lineLength = len(max(lines, key=len))
         charset = pygame.image.load(os.path.join('images', 'charset.png')).convert_alpha()
         shadow = pygame.image.load(os.path.join('images', 'shadow.png')).convert_alpha()
@@ -44,6 +49,7 @@ class GameScene(Scene):
         door = pygame.image.load(os.path.join('images', 'hurd2.png')).convert_alpha()
         self.sword_texture = pygame.image.load(os.path.join('images', 'swords3.png')).convert_alpha()
         self.sword_icon = pygame.image.load(os.path.join('images', 'sword icon.png')).convert_alpha()
+        self.keyTexture = pygame.image.load(os.path.join('images', 'Small_Key_MC.gif')).convert_alpha()
         self.heartTexture = heart
         self.paused = False
         self.entities = pygame.sprite.LayeredUpdates()
@@ -68,7 +74,7 @@ class GameScene(Scene):
         screenrect = pygame.Rect(0, 0, window_width, window_height)
         self.levelrect.center = screenrect.center
         self.doors = list()
-        """ Guide to level element codes:
+        """ Guide to room element codes:
         Stone floor  = 0
         Stone wall = 1
         Wood door = 2, add a "L" to make it locked
@@ -91,8 +97,6 @@ class GameScene(Scene):
                 if "Player" in lines[i][j]:
                     if not playerLocation:
                         self.player.update_player(pygame.Rect(rect.x, rect.y, drawSize - 1, drawSize / 5 * 3), 180)
-                    else:
-                        self.player.update_player(playerLocation, 180)
                 if 2 in lines[i][j]:
                     # Check if vertical door or horizontal door
                     # If door has already been made, skip this
@@ -155,6 +159,11 @@ class GameScene(Scene):
                 self.heartList.append(SimpleRectSprite(rect, heart.subsurface(pygame.Rect(0,0,8,8)), True))
             else:
                 self.heartList.append(SimpleRectSprite(rect, heart.subsurface(pygame.Rect(8*12, 0, 8, 8)), True))
+        self.keyList = list()
+        for i in xrange(self.player.keys):
+            rect = pygame.Rect((drawSize * 20) + (40 * i), 20, 7 * 5, 7 * 5)
+            self.keyList.append(SimpleRectSprite(rect, self.keyTexture, True))
+        self.keys = pygame.sprite.Group(self.keyList)
         self.hearts = pygame.sprite.Group(self.heartList)
         self.swordsprite = SimpleSprite(self.player.rect.midtop, pygame.Surface((0, 0)))
         """self.backgroundFill = pygame.Surface((window_size))
@@ -171,6 +180,10 @@ class GameScene(Scene):
             self.offset.x = (window_width - self.levelrect.w) / 2
         if self.levelrect.h < window_height:
             self.offset.y = (window_height - self.levelrect.h) / 2
+
+        #Manually unstun player and update speed in case player is already holding down movement keys
+        self.player.stunned = False
+        self.player.update_speed()
 
 
     def render(self, screen):
@@ -191,6 +204,7 @@ class GameScene(Scene):
         #screen.blit(pygame.transform.scale(gameSurface, window_size), (0, 0))
         #UI
         self.hearts.draw(screen)
+        self.keys.draw(screen)
         if self.paused:
             line_rect1 = pygame.Rect(screen.get_rect().w / 32 * 31, screen.get_rect().h / 16, screen.get_rect().w / 64, screen.get_rect().w / 64 * 3)
             line_rect2 = pygame.Rect(screen.get_rect().w / 32 * 30, screen.get_rect().h / 16, screen.get_rect().w / 64, screen.get_rect().w / 64 * 3)
@@ -228,9 +242,13 @@ class GameScene(Scene):
 
         #Handle location triggers
         for trigger in self.triggers:
-            if trigger.rect.contains(self.player.collision_rect):
-                print("TRIGGERED")
-                self.manager.go_to(GameScene(0, self.player, pygame.Rect((300, 100), self.player.collision_rect.size)))
+            if trigger.rect.colliderect(self.player.collision_rect):
+                if trigger.name == "GotoRoom":
+                    params = {'room': self.sword_texture, 'phase': 0, "gotoWhere": trigger.gotoWhere, 'vx':self.player.vx, 'vy':self.player.vy, 'nextScene': trigger.leadsToRoom}
+                    self.animations.append(Animation("leaveRoom", params))
+                    self.nextSceneThread = threading.Thread(target=self.processNextRoom, args=(trigger.leadsToRoom, self.player))
+                    self.nextSceneThread.daemon = True
+                    self.nextSceneThread.start()
                 self.triggers.remove(trigger)
 
 
@@ -309,10 +327,15 @@ class GameScene(Scene):
                         s.sprite.image = SimpleRectSprite(pygame.Rect(s.sprite.rect), self.heartTexture.subsurface(pygame.Rect((s.phase) * 8, 0, 8, 8)), True).image
                         s.phase += 1
                     if s.name == "openDoor":
-                        if s.phase >= 6:
+                        if s.phase >= 6 or s.door.is_open:
+                            s.door.is_open = True
                             self.animations.remove(s)
                             self.grid.update_grid(self.collidables + self.character_collision_boxes)
+                            self.player.update_speed()
                             continue
+                        self.player.vx = 0
+                        self.player.vy = 0
+                        self.player.set_sprite_direction()
                         if s.door.rotation == 0:
                             s.door.move((15, 0))
                         elif s.door.rotation == 90:
@@ -321,6 +344,25 @@ class GameScene(Scene):
                             s.door.move((-15, 0))
                         elif s.door.rotation == 270:
                             s.door.move((0, -15))
+                        s.phase += 1
+                    if s.name == "leaveRoom":
+                        if s.phase == 30:
+                            #self.manager.go_to(GameScene(s.nextScene, self.player, pygame.Rect((300, 100), self.player.collision_rect.size)))
+                            self.nextSceneThread.join()
+                            self.manager.go_to(self.nextScene)
+                            self.manager.scene.teleportPlayerToTag(s.gotoWhere)
+                            print self.manager.scene.lines
+                            self.animations.remove(s)
+                            continue
+                        if s.vx > 0:
+                            self.player.vx = self.player.baseSpeed
+                        if s.vx < 0:
+                            self.player.vx = -self.player.baseSpeed
+                        if s.vy > 0:
+                            self.player.vy = self.player.baseSpeed
+                        if s.vy < 0:
+                            self.player.vy = -self.player.baseSpeed
+                        self.player.set_sprite_direction()
                         s.phase += 1
 
                 for char in self.entities:
@@ -368,6 +410,13 @@ class GameScene(Scene):
                     self.animations.append(Animation("health", params))
                     self.player.displayHealth -= 1
 
+            if event.type == keyEvent:
+                self.keyList = list()
+                for i in xrange(self.player.keys):
+                    rect = pygame.Rect((drawSize * 20) + (40 * i), 20, 7 * 5, 7 * 5)
+                    self.keyList.append(SimpleRectSprite(rect, self.keyTexture, True))
+                self.keys = pygame.sprite.Group(self.keyList)
+
             if event.type == actionEvent:  # When the player presses the action key
                 surrounding_blocks = self.make_surrounding_blocks(self.player.collision_rect)
                 blocks = pygame.sprite.Group()
@@ -380,6 +429,7 @@ class GameScene(Scene):
                     elif self.player.keys > 0:
                         self.player.keys -= 1
                         door.unlock()
+                        pygame.event.post(pygame.event.Event(keyEvent))
 
     def make_wall_block(self, wall_texture, array_slice):
         rect = pygame.Rect(0, 0, 24, 24)
@@ -426,7 +476,8 @@ class GameScene(Scene):
         for x in range(-1, 2):
             for y in range(-1, 2):
                 try:
-                    sliced[1-x][1-y] = array[i-x][j-y]
+                    if i-x >= 0 and j-y >= 0:
+                        sliced[1-x][1-y] = array[i-x][j-y]
                 except IndexError:
                     pass
         return sliced
@@ -460,17 +511,31 @@ class GameScene(Scene):
                 self.heartList.append(SimpleRectSprite(rect, heartTexture.subsurface(pygame.Rect(8*12, 0, 8, 8)), True))
         self.hearts = pygame.sprite.Group(self.heartList)
 
+    def processNextRoom(self, scene, player, playerLocation="filler"):
+        self.nextScene = GameScene(scene, player, playerLocation)
+        print "Done"
+
+    def teleportPlayerToTag(self,playerLocation):
+        for a in xrange(len(self.lines)):
+            for b in xrange(len(self.lines[a])):
+                if playerLocation in self.lines[a][b]:
+                    print "Found location"
+                    self.player.update_player(
+                        pygame.Rect((b * drawSize, a * drawSize), self.player.collision_rect.size), 180)
+                    print self.player.collision_rect.topleft
+
 
 class TitleScene(Scene):
 
     def __init__(self):
         super(TitleScene, self).__init__()
-        self.background = pygame.image.load(os.path.join('images', 'background test.png')).convert_alpha()
+        background = pygame.image.load(os.path.join('images', 'background test.png')).convert_alpha()
         self.menu_background = pygame.image.load(os.path.join('images', 'background menu.png')).convert_alpha()
         self.logo = pygame.image.load(os.path.join('images', 'logo pixel.png')).convert_alpha()
         self.logo_sprite = SimpleRectSprite(pygame.Rect(425, 325, 400, 400), self.logo, True)
         self.font = pygame.font.SysFont('Consolas', 56)
         self.sfont = pygame.font.SysFont('Consolas', 32)
+        self.animations = list()
         if pygame.mixer.get_init():
             self.mixer = pygame.mixer.Channel(0)
             self.mixer.set_volume(0.8)
@@ -480,9 +545,17 @@ class TitleScene(Scene):
         self.colorLevel = [True, True, True]
         self.textCoord = 300
         self.textLevel = 0
+        self.realbackground1x = 0
+        self.realbackground2x = -window_width
+        self.background1 = SimpleSprite((self.realbackground1x, 0), background)
+        self.background2 = SimpleSprite((self.realbackground2x, 0), background)
+        self.backgroundSprites = pygame.sprite.Group(self.background1, self.background2)
+        self.whiteScreen = pygame.Surface(window_size)
+        self.whiteScreen.fill(WHITE)
+        self.whiteScreen.set_alpha(0)
 
     def render(self, screen):
-        screen.blit(self.background, (0,0))
+        self.backgroundSprites.draw(screen)
         screen.blit(self.menu_background, (0,0))
         text1 = self.font.render('Lokaverkefni', True, tuple(self.color))
         text2 = self.sfont.render('> press space to start <', True, WHITE)
@@ -490,8 +563,11 @@ class TitleScene(Scene):
         screen.blit(text2, (425, self.textCoord))
         self.logo_sprite.rect.centerx = screen.get_rect().centerx
         screen.blit(self.logo_sprite.image, self.logo_sprite.rect)
+        screen.blit(self.whiteScreen, (0, 0))
 
     def update(self, time):
+        self.textCoord = round(300 + sin(self.textLevel) * 10)
+        self.textLevel += (0.0005 * time)
         pass
 
     def handle_events(self, events):
@@ -499,10 +575,22 @@ class TitleScene(Scene):
             if event.type == pygame.QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
                 pygame.event.post(pygame.event.Event(QUIT))
             if event.type == KEYDOWN and event.key == K_SPACE:
-                if pygame.mixer.get_init():
-                    self.mixer.fadeout(500)
-                self.manager.go_to(GameScene(0))
+                params = {'phase': 0, 'opacity': 0}
+                self.animations.append(Animation("StartGame", params))
             if event.type == animationEvent:
+                for s in self.animations:
+                    if s.name == "StartGame":
+                        if s.phase == 0:
+                            if pygame.mixer.get_init():
+                                self.mixer.fadeout(1000)
+                        if s.phase == 19:
+                            self.whiteScreen.set_alpha(255)
+                        if s.phase == 20:
+                            self.manager.go_to(GameScene(0))
+                        s.opacity += 12
+                        self.whiteScreen.set_alpha(s.opacity)
+                        s.phase += 1
+
                 for i in range(3):
                     if self.colorLevel[i]:
                         self.color[i] += i+random.randint(-i, 2)
@@ -514,13 +602,14 @@ class TitleScene(Scene):
                         if self.color[i] <= 0:
                             self.color[i] = 0
                             self.colorLevel[i] = True
-                self.textCoord = round(300 + sin(self.textLevel) * 10)
-                self.textLevel += 0.02
-                temp_background = pygame.Surface(self.background.get_size(), 0, self.background)
-                temp_background.blit(self.background, (1, 0))
-                temp_background.blit(self.background.subsurface(pygame.Rect(self.background.get_width()-1, 0, 1, self.background.get_height())), (0, 0))
-                self.background = temp_background
-
+                    self.realbackground1x += 0.5
+                    self.realbackground2x += 0.5
+                    self.background1.rect.left = self.realbackground1x
+                    self.background2.rect.left = self.realbackground2x
+                    if self.realbackground1x == 0:
+                        self.realbackground2x = -window_width
+                    elif self.realbackground2x == 0:
+                        self.realbackground1x = -window_width
 
 class TextScrollScene(Scene):
 
@@ -591,4 +680,3 @@ class GameOverScene(Scene):
                 if pygame.mixer.get_init():
                     self.mixer.fadeout(500)
                 self.manager.go_to(TitleScene())
-
