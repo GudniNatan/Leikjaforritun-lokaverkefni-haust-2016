@@ -167,9 +167,20 @@ class Character(pygame.sprite.Sprite):
     def get_collision_box(self):
         return Box(self.collision_rect)
 
+    def set_position(self, topleft):
+        self.collision_rect.topleft = topleft
+        (self.realX, self.realY) = topleft
+        self.gridPos = [self.collision_rect.center[0] / drawSize, self.collision_rect.center[1] / drawSize]
+        self.rect.midbottom = (self.collision_rect.centerx, self.collision_rect.bottom - 1)
+
     def hit(self, damage=1):
         if self.stunned:
             return
+        try:
+            if self.godMode:
+                return
+        except Exception:
+            pass
         self.stunned = True
         self.health -= damage
         pygame.event.post(pygame.event.Event(healthEvent))
@@ -183,6 +194,7 @@ class Player(Character):
         self.direction = 180
         self.displayHealth = self.health
         self.keys = 3
+        self.godMode = False
 
     def update_speed(self):
         keys = pygame.key.get_pressed()
@@ -203,9 +215,6 @@ class Player(Character):
                 self.vy = 0
             if keys[K_RIGHT] == keys[K_LEFT]:
                 self.vx = 0
-            if self.vx and self.vy:
-                self.vx /= 1.4
-                self.vy /= 1.4
         self.set_sprite_direction()
 
     def update_player(self, rect, direction):
@@ -230,6 +239,11 @@ class Player(Character):
         self.next_location = self.collision_rect
         self.red_blink = False
         self.displayHealth = self.health
+
+    def update_position(self, time, collidables):
+        if self.health == 0:
+            return
+        super(Player, self).update_position(time, collidables)
 
 
 class NPC(Character):

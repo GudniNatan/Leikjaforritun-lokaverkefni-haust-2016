@@ -8,16 +8,39 @@ from Objects import *
 import random
 import codecs
 import threading
+import copy
 from math import sin
 from rooms import get_room
 
 class SceneManager(object):
     def __init__(self):
         self.go_to(TitleScene())
+        self.room = list()
 
     def go_to(self, scene):
-        self.scene = scene
+        if type(scene) is GameScene: #If the scene already exists
+            try:
+                self.scene = self.room[scene.roomNumber]
+                print("Found room")
+            except IndexError:
+                self.scene = scene
+                print("Creating scene")
+            self.scene.load_level()
+        else:
+            self.scene = scene
         self.scene.manager = self
+
+    def generate_rooms(self):  # Idea is to process everything at once so we can switch between rooms with ease.
+        self.room = list()
+        i = 0
+        while True:  # Generate all possible rooms. if there is a gap anywhere, the generator will stop there.
+            try:
+                get_room(i)
+                self.room.append(GameScene(i))
+            except KeyError:
+                break
+            i += 1
+        print("Generated " + str(i) + " rooms.")
 
 class Scene(object):
     def __init__(self):
@@ -32,14 +55,18 @@ class Scene(object):
     def handle_events(self, events):
         raise NotImplementedError
 
+    def load_level(self):
+        pass
+
 
 class GameScene(Scene):
-    def __init__(self, room=0, player=None, playerLocation=None):
+    def __init__(self, room=0):
         super(GameScene, self).__init__()
         lines = get_room(room)
         self.lines = lines
         self.nextScene = None
         self.nextSceneThread = None
+        self.roomNumber = room
         lineLength = len(max(lines, key=len))
         charset = pygame.image.load(os.path.join('images', 'charset.png')).convert_alpha()
         shadow = pygame.image.load(os.path.join('images', 'shadow.png')).convert_alpha()
@@ -57,10 +84,7 @@ class GameScene(Scene):
         self.animations = list()
         self.collidables = list()
         character_sprite_size = (16, 18, 24)
-        if player == None:
-            self.player = Player(pygame.Rect(30, 30, drawSize-1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(0, 72, 47, 72)), character_sprite_size)
-        else:
-            self.player = player
+        self.player = Player(pygame.Rect(30, 30, drawSize-1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(0, 72, 47, 72)), character_sprite_size)
         self.block_group = pygame.sprite.Group()
         self.action_group = pygame.sprite.Group()
         self.background_group = pygame.sprite.Group()
@@ -72,6 +96,8 @@ class GameScene(Scene):
 
         self.grid = Grid([lineLength, len(lines)])
         screenrect = pygame.Rect(0, 0, window_width, window_height)
+        self.cameraLeeway = pygame.Rect(0, 0, window_width / 8, window_height / 8)
+        self.cameraLeeway.center = screenrect.center
         self.levelrect.center = screenrect.center
         self.doors = list()
         """ Guide to room element codes:
@@ -95,8 +121,7 @@ class GameScene(Scene):
                     stalker = Stalker(pygame.Rect(rect.x, rect.y, drawSize-1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(48, 72, 47, 72)), character_sprite_size, self.player)
                     self.npcs.add(stalker)
                 if "Player" in lines[i][j]:
-                    if not playerLocation:
-                        self.player.update_player(pygame.Rect(rect.x, rect.y, drawSize - 1, drawSize / 5 * 3), 180)
+                    self.player.update_player(pygame.Rect(rect.x, rect.y, drawSize - 1, drawSize / 5 * 3), 180)
                 if 2 in lines[i][j]:
                     # Check if vertical door or horizontal door
                     # If door has already been made, skip this
@@ -152,19 +177,8 @@ class GameScene(Scene):
         self.grid.update_grid(self.collidables + self.character_collision_boxes)
         if self.character_collision_boxes:
             self.shadow = pygame.transform.scale(shadow, self.character_collision_boxes[0].rect.size)
-        self.heartList = list()
-        for i in xrange(self.player.maxHealth):
-            rect = pygame.Rect((drawSize * 10) +(40 * i), 20, 7 * 4, 7 * 4)
-            if self.player.health > i:
-                self.heartList.append(SimpleRectSprite(rect, heart.subsurface(pygame.Rect(0,0,8,8)), True))
-            else:
-                self.heartList.append(SimpleRectSprite(rect, heart.subsurface(pygame.Rect(8*12, 0, 8, 8)), True))
-        self.keyList = list()
-        for i in xrange(self.player.keys):
-            rect = pygame.Rect((drawSize * 20) + (40 * i), 20, 7 * 5, 7 * 5)
-            self.keyList.append(SimpleRectSprite(rect, self.keyTexture, True))
-        self.keys = pygame.sprite.Group(self.keyList)
-        self.hearts = pygame.sprite.Group(self.heartList)
+        self.update_hearts(heart)
+        self.update_keys(self.keyTexture)
         self.swordsprite = SimpleSprite(self.player.rect.midtop, pygame.Surface((0, 0)))
         """self.backgroundFill = pygame.Surface((window_size))
         self.backgroundFill.fill(BLACK)
@@ -180,11 +194,25 @@ class GameScene(Scene):
             self.offset.x = (window_width - self.levelrect.w) / 2
         if self.levelrect.h < window_height:
             self.offset.y = (window_height - self.levelrect.h) / 2
+        self.cameraLeeway.center = self.player.collision_rect.center
 
-        #Manually unstun player and update speed in case player is already holding down movement keys
+    def set_player(self, player, playerLocationTag):
+        self.player.__dict__ = player.__dict__.copy()
+        self.player.update_player(player.collision_rect, player.direction)
+        self.teleportPlayerToTag(playerLocationTag)
+        self.character_collision_boxes = [char.get_collision_box() for char in self.entities]
+        self.grid.update_grid(self.collidables + self.character_collision_boxes)
+        self.update_hearts(self.heartTexture)
+        self.update_keys(self.keyTexture)
+        # Manually unstun player and update speed in case player is already holding down movement keys
         self.player.stunned = False
+        self.player.godMode = False
         self.player.update_speed()
+        self.cameraLeeway.center = self.player.collision_rect.center
 
+    def load_level(self): # Don't mess with the player here, use set_player or teleportPlayerToTag
+        for npc in self.npcs:
+            npc.set_position(npc.startPoint)
 
     def render(self, screen):
         #Game surface
@@ -214,8 +242,9 @@ class GameScene(Scene):
         screen.blit(self.sword_icon.subsurface(pygame.Rect(0, 0, 44, 44)), (1000, 20))
 
     def update(self, time):
-        if self.paused:
+        if self.paused:  # Don't update anything when paused, could add in any special exceptions here
             return
+        # Update character positions, speed and layers
         for sprite in self.entities.copy().sprites():
             self.entities.change_layer(sprite, sprite.rect.centery)
         self.character_collision_boxes = [entity.get_collision_box() for entity in self.entities]
@@ -228,10 +257,19 @@ class GameScene(Scene):
                 break
             if not self.collidables[x].alive():
                 self.collidables.pop(x)
-        #Update camera rect
-        self.camera.centerx = self.player.collision_rect.centerx
-        self.camera.centery = self.player.collision_rect.centery
-        if self.camera.x < 0:
+        # Update camera
+        if self.player.collision_rect.left <= self.cameraLeeway.left and self.player.vx < 0:
+            self.cameraLeeway.left = self.player.collision_rect.left
+        elif self.player.collision_rect.right >= self.cameraLeeway.right and self.player.vx > 0:
+            self.cameraLeeway.right = self.player.collision_rect.right
+        if self.player.collision_rect.top <= self.cameraLeeway.top and self.player.vy < 0:
+            self.cameraLeeway.top = self.player.collision_rect.top
+        if self.player.collision_rect.bottom >= self.cameraLeeway.bottom and self.player.vy > 0:
+            self.cameraLeeway.bottom = self.player.collision_rect.bottom
+
+        self.camera.center = self.cameraLeeway.center  # Camera follows the camera leeway rect
+
+        if self.camera.x < 0:   # Make sure camera does not leave the game area
             self.camera.x = 0
         elif self.camera.right > self.gameSurface.get_width():
             self.camera.right = self.gameSurface.get_width()
@@ -240,17 +278,17 @@ class GameScene(Scene):
         elif self.camera.bottom > self.gameSurface.get_height():
             self.camera.bottom = self.gameSurface.get_height()
 
-        #Handle location triggers
+        # Handle location triggers
         for trigger in self.triggers:
             if trigger.rect.colliderect(self.player.collision_rect):
                 if trigger.name == "GotoRoom":
+                    self.player.godMode
                     params = {'room': self.sword_texture, 'phase': 0, "gotoWhere": trigger.gotoWhere, 'vx':self.player.vx, 'vy':self.player.vy, 'nextScene': trigger.leadsToRoom}
                     self.animations.append(Animation("leaveRoom", params))
-                    self.nextSceneThread = threading.Thread(target=self.processNextRoom, args=(trigger.leadsToRoom, self.player))
+                    self.nextSceneThread = threading.Thread(target=self.processNextRoom, args=(trigger.leadsToRoom,))
                     self.nextSceneThread.daemon = True
                     self.nextSceneThread.start()
                 self.triggers.remove(trigger)
-
 
     def handle_events(self, events):
         for event in events:
@@ -350,9 +388,18 @@ class GameScene(Scene):
                             #self.manager.go_to(GameScene(s.nextScene, self.player, pygame.Rect((300, 100), self.player.collision_rect.size)))
                             self.nextSceneThread.join()
                             self.manager.go_to(self.nextScene)
-                            self.manager.scene.teleportPlayerToTag(s.gotoWhere)
-                            print self.manager.scene.lines
+                            self.manager.scene.set_player(self.player, s.gotoWhere)
                             self.animations.remove(s)
+                            for tag in self.lines[0][0]:
+                                if type(tag) is Trigger:
+                                    self.triggers.append(tag)
+                                    try:
+                                        tag.placeWhere
+                                    except Exception:
+                                        pass
+                                    else:
+                                        tag.set_place(self.lines)
+
                             continue
                         if s.vx > 0:
                             self.player.vx = self.player.baseSpeed
@@ -395,20 +442,24 @@ class GameScene(Scene):
                     if entity.stunned:
                         entity.stunned = False
                     if entity.health <= 0:
-                        entity.kill()
+                        try:
+                            entity.kill()
+                        except ValueError:
+                            pass
                         entity = None
 
             if event.type == healthEvent:
                 if self.player.health > self.player.maxHealth:
                     self.player.health = self.player.maxHealth - 1
                     self.player.displayHealth = self.player.maxHealth
-                if self.player.health <= 0:
-                    self.manager.go_to(GameOverScene())
-                if self.player.displayHealth != self.player.health:
+                if self.player.displayHealth != self.player.health and self.player.health >= 0:
                     params = {'sprite': self.heartList[self.player.displayHealth-1],
                               'jumpdistance': 8, 'phase': 0, }
                     self.animations.append(Animation("health", params))
                     self.player.displayHealth -= 1
+                elif self.player.health <= 0:
+                    self.manager.go_to(GameOverScene())
+
 
             if event.type == keyEvent:
                 self.keyList = list()
@@ -511,18 +562,31 @@ class GameScene(Scene):
                 self.heartList.append(SimpleRectSprite(rect, heartTexture.subsurface(pygame.Rect(8*12, 0, 8, 8)), True))
         self.hearts = pygame.sprite.Group(self.heartList)
 
-    def processNextRoom(self, scene, player, playerLocation="filler"):
-        self.nextScene = GameScene(scene, player, playerLocation)
+    def update_keys(self, keyTexture):
+        self.keyList = list()
+        for i in xrange(self.player.keys):
+            rect = pygame.Rect((drawSize * 20) + (40 * i), 20, 7 * 5, 7 * 5)
+            self.keyList.append(SimpleRectSprite(rect, self.keyTexture, True))
+        self.keys = pygame.sprite.Group(self.keyList)
+
+
+    def processNextRoom(self, scene):
+        try:
+            self.nextScene = self.manager.room[scene]
+        except IndexError:
+            self.nextScene = GameScene(scene)
         print "Done"
 
-    def teleportPlayerToTag(self,playerLocation):
+    def teleportPlayerToTag(self, playerLocation):
+        found_tag = False
         for a in xrange(len(self.lines)):
             for b in xrange(len(self.lines[a])):
                 if playerLocation in self.lines[a][b]:
-                    print "Found location"
                     self.player.update_player(
                         pygame.Rect((b * drawSize, a * drawSize), self.player.collision_rect.size), 180)
-                    print self.player.collision_rect.topleft
+                    self.cameraLeeway.center = self.player.collision_rect.center
+                    found_tag = True
+        return found_tag
 
 
 class TitleScene(Scene):
@@ -586,7 +650,8 @@ class TitleScene(Scene):
                         if s.phase == 19:
                             self.whiteScreen.set_alpha(255)
                         if s.phase == 20:
-                            self.manager.go_to(GameScene(0))
+                            self.manager.generate_rooms()
+                            self.manager.go_to(GameScene(3))
                         s.opacity += 12
                         self.whiteScreen.set_alpha(s.opacity)
                         s.phase += 1

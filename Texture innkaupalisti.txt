@@ -1,0 +1,24 @@
+Venjuleg textur - Öll 30x30 pixlar
+
+Veggur, toppur
+Veggur, opin hlið
+Veggur, opið horn
+Veggur, lokað horn
+Gólf úr steini, kannski gaman að fá 2-3 alternate gólf texture sem hægt er að skreyta með
+
+(Væri gaman að fá kannski svona 2 auka palette swap af öllu þessu)
+
+
+
+Sérstök texture
+
+Hurð (60 x 120), með og án lás
+Kista (30 x 30)
+Lykill (60 x 60)
+Boss lykill (60 x 60)
+
+
+Animated texture
+Hjarta (60 x 60), 8 phase
+Aðal kall (16 x 18), snýr í allar 4 áttir og er með 3 phase
+Aðrir kallar, allir jafn stórir
