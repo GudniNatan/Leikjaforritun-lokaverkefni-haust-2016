@@ -44,6 +44,10 @@ class SimpleRectSprite(pygame.sprite.Sprite):  # Molds sprite to rect, either by
         self.rect.x += x
         self.rect.y += y
 
+    def move_to(self, (x, y)):
+        self.move((x - self.rect.x, y - self.rect.y))
+
+
 class ActionObject(object):
     def __init__(self, spriteGroup=pygame.sprite.Group()):
         super(ActionObject, self).__init__()
@@ -57,6 +61,9 @@ class ActionObject(object):
             sprite.rect.y += y
         self.rect.x += x
         self.rect.y += y
+
+    def move_to(self, (x, y)):
+        self.move((x - self.rect.x, y - self.rect.y))
 
     def kill(self):
         for sprite in self.spriteGroup:

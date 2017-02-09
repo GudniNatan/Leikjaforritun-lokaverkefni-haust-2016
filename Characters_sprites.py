@@ -16,7 +16,7 @@ class Character(pygame.sprite.Sprite):
         self.realY = self.collision_rect.y
         self.startPoint = [self.collision_rect.x, self.collision_rect.y]
         self.gridPos = [self.collision_rect.center[0] / drawSize, self.collision_rect.center[1] / drawSize]
-        self.baseSpeed = 0.08
+        self.baseSpeed = 0.004 * drawSize
         self.health = 3
         self.maxHealth = self.health
         self.charset = charset
@@ -27,8 +27,8 @@ class Character(pygame.sprite.Sprite):
         self.directionLock = False
         self.set_sprite_direction()
         self.rect = self.image.get_rect()
-        self.rect.midbottom = (rect.centerx, rect.bottom - 1)
-        self.collision_rect.w = 20
+        self.rect.bottom = rect.bottom - 1
+        self.collision_rect.w = self.sprite_size_rect[0]
         self.walking_phase = 1
         self.moving = False
         self.stunned = False
@@ -231,8 +231,8 @@ class Player(Character):
         self.directionLock = False
         self.set_sprite_direction()
         self.rect = self.image.get_rect()
+        self.collision_rect.w = self.sprite_size_rect[0]
         self.rect.midbottom = (rect.centerx, rect.bottom - 1)
-        self.collision_rect.w = 20
         self.walking_phase = 1
         self.moving = False
         self.stunned = False
@@ -267,7 +267,7 @@ class NPC(Character):
 class Stalker(NPC):
     def __init__(self, rect, charset, sprite_size_rect, player):
         super(Stalker, self).__init__(rect, charset, sprite_size_rect)
-        self.baseSpeed = 0.04
+        self.baseSpeed = self.baseSpeed * 0.6
         self.followPlayer = True
         self.player = player
 

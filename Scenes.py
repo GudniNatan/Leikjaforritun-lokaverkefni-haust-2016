@@ -74,7 +74,7 @@ class GameScene(Scene):
         heart = pygame.image.load(os.path.join('images', 'hearts.png')).convert_alpha()
         floor_tile = pygame.image.load(os.path.join('images', 'floor.png')).convert_alpha()
         door = pygame.image.load(os.path.join('images', 'hurd2.png')).convert_alpha()
-        self.sword_texture = pygame.image.load(os.path.join('images', 'swords3.png')).convert_alpha()
+        self.sword_texture = aspect_scale(pygame.image.load(os.path.join('images', 'swords3.png')).convert_alpha(), (100000, drawSize))
         self.sword_icon = pygame.image.load(os.path.join('images', 'sword icon.png')).convert_alpha()
         self.keyTexture = pygame.image.load(os.path.join('images', 'Small_Key_MC.gif')).convert_alpha()
         self.heartTexture = heart
@@ -83,8 +83,9 @@ class GameScene(Scene):
         self.npcs = pygame.sprite.Group()
         self.animations = list()
         self.collidables = list()
-        character_sprite_size = (16, 18, 24)
-        self.player = Player(pygame.Rect(30, 30, drawSize-1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(0, 72, 47, 72)), character_sprite_size)
+        charset = aspect_scale(charset, (drawSize * 14, 100000))
+        character_sprite_size = (charset.get_width() / 18, charset.get_height() / 8, drawSize * 0.9)
+        self.player = Player(pygame.Rect(30, 30, drawSize-1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(0, charset.get_height() / 8 * 4, charset.get_width() / 18 * 3, charset.get_height() / 8 * 4)), character_sprite_size)
         self.block_group = pygame.sprite.Group()
         self.action_group = pygame.sprite.Group()
         self.background_group = pygame.sprite.Group()
@@ -118,7 +119,7 @@ class GameScene(Scene):
                     sprite = SimpleRectSprite(rect, sprite.image, True)
                     self.block_group.add(sprite)
                 if "Stalker" in lines[i][j]:
-                    stalker = Stalker(pygame.Rect(rect.x, rect.y, drawSize-1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(48, 72, 47, 72)), character_sprite_size, self.player)
+                    stalker = Stalker(pygame.Rect(rect.x, rect.y, drawSize-1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(charset.get_width() / 18 * 3, charset.get_height() / 8 * 4, charset.get_width() / 18 * 3, charset.get_height() / 8 * 4)), character_sprite_size, self.player)
                     self.npcs.add(stalker)
                 if "Player" in lines[i][j]:
                     self.player.update_player(pygame.Rect(rect.x, rect.y, drawSize - 1, drawSize / 5 * 3), 180)
@@ -196,24 +197,6 @@ class GameScene(Scene):
             self.offset.y = (window_height - self.levelrect.h) / 2
         self.cameraLeeway.center = self.player.collision_rect.center
 
-    def set_player(self, player, playerLocationTag):
-        self.player.__dict__ = player.__dict__.copy()
-        self.player.update_player(player.collision_rect, player.direction)
-        self.teleportPlayerToTag(playerLocationTag)
-        self.character_collision_boxes = [char.get_collision_box() for char in self.entities]
-        self.grid.update_grid(self.collidables + self.character_collision_boxes)
-        self.update_hearts(self.heartTexture)
-        self.update_keys(self.keyTexture)
-        # Manually unstun player and update speed in case player is already holding down movement keys
-        self.player.stunned = False
-        self.player.godMode = False
-        self.player.update_speed()
-        self.cameraLeeway.center = self.player.collision_rect.center
-
-    def load_level(self): # Don't mess with the player here, use set_player or teleportPlayerToTag
-        for npc in self.npcs:
-            npc.set_position(npc.startPoint)
-
     def render(self, screen):
         #Game surface
         screen.fill(BLACK)
@@ -228,6 +211,7 @@ class GameScene(Scene):
             self.entities.draw(self.gameSurface)
             self.gameSurface.blit(self.swordsprite.image, self.swordsprite.rect)
         pygame.draw.rect(self.gameSurface, BLACK, pygame.Rect((0, 0), self.levelrect.size), 6)
+        #self.gameSurface.fill(BLACK, self.player.collision_rect)
         screen.blit(self.gameSurface.subsurface(self.camera), (self.offset.x, self.offset.y))
         #screen.blit(pygame.transform.scale(gameSurface, window_size), (0, 0))
         #UI
@@ -332,9 +316,9 @@ class GameScene(Scene):
                             if s.phase == 3:
                                 pygame.event.post(pygame.event.Event(swordSwingEvent))
                             if s.phase < 2:
-                                self.swordsprite.image = s.sprite.subsurface(pygame.Rect(0, 0, 25, 28))
+                                self.swordsprite.image = s.sprite.subsurface(pygame.Rect(0, 0, self.sword_texture.get_width() / 5, self.sword_texture.get_height()))
                             else:
-                                self.swordsprite.image = s.sprite.subsurface(pygame.Rect(25 * (s.phase-2), 0, 25, 28))
+                                self.swordsprite.image = s.sprite.subsurface(pygame.Rect((self.sword_texture.get_width() / 5) * (s.phase-2), 0, self.sword_texture.get_width() / 5, self.sword_texture.get_height()))
                             self.swordsprite.image = pygame.transform.rotate(pygame.transform.flip(self.swordsprite.image, True, False), (360 - self.player.direction) % 360 )
                         self.swordsprite.rect.topleft = self.player.rect.midtop
                         if s.phase == 0:
@@ -368,6 +352,14 @@ class GameScene(Scene):
                         if s.phase >= 6 or s.door.is_open:
                             s.door.is_open = True
                             self.animations.remove(s)
+                            if s.door.rotation == 0:
+                                s.door.move_to(s.startRect.topright)
+                            elif s.door.rotation == 90:
+                                s.door.move_to(s.startRect.bottomleft)
+                            elif s.door.rotation == 180:
+                                s.door.move_to((s.startRect.left - s.startRect.width, s.startRect.top))
+                            elif s.door.rotation == 270:
+                                s.door.move_to((s.startRect.left, s.startRect.top - s.startRect.height))
                             self.grid.update_grid(self.collidables + self.character_collision_boxes)
                             self.player.update_speed()
                             continue
@@ -375,16 +367,16 @@ class GameScene(Scene):
                         self.player.vy = 0
                         self.player.set_sprite_direction()
                         if s.door.rotation == 0:
-                            s.door.move((15, 0))
+                            s.door.move((drawSize / 2, 0))
                         elif s.door.rotation == 90:
-                            s.door.move((0, 15))
+                            s.door.move((0, drawSize / 2))
                         elif s.door.rotation == 180:
-                            s.door.move((-15, 0))
+                            s.door.move((-(drawSize / 2), 0))
                         elif s.door.rotation == 270:
-                            s.door.move((0, -15))
+                            s.door.move((0, -(drawSize / 2)))
                         s.phase += 1
                     if s.name == "leaveRoom":
-                        if s.phase == 30:
+                        if s.phase == 20:
                             #self.manager.go_to(GameScene(s.nextScene, self.player, pygame.Rect((300, 100), self.player.collision_rect.size)))
                             self.nextSceneThread.join()
                             self.manager.go_to(self.nextScene)
@@ -475,7 +467,7 @@ class GameScene(Scene):
                 for door in pygame.sprite.groupcollide(self.doors, blocks, False, False):
                     if not door.locked:
                         if not door.is_open:
-                            params = {'door': door, 'phase': 0, }
+                            params = {'door': door, 'phase': 0, 'startRect': copy.copy(door.rect)}
                             self.animations.append(Animation("openDoor", params))
                     elif self.player.keys > 0:
                         self.player.keys -= 1
@@ -588,6 +580,25 @@ class GameScene(Scene):
                     found_tag = True
         return found_tag
 
+    def set_player(self, player, playerLocationTag):
+        self.player.__dict__ = player.__dict__.copy()
+        self.player.update_player(player.collision_rect, player.direction)
+        self.teleportPlayerToTag(playerLocationTag)
+        self.character_collision_boxes = [char.get_collision_box() for char in self.entities]
+        self.grid.update_grid(self.collidables + self.character_collision_boxes)
+        self.update_hearts(self.heartTexture)
+        self.update_keys(self.keyTexture)
+        # Manually unstun player and update speed in case player is already holding down movement keys
+        self.player.stunned = False
+        self.player.godMode = False
+        self.player.update_speed()
+        self.cameraLeeway.center = self.player.collision_rect.center
+
+    def load_level(self): # Don't mess with the player here, use set_player or teleportPlayerToTag
+        for npc in self.npcs:
+            npc.set_position(npc.startPoint)
+
+
 
 class TitleScene(Scene):
 
@@ -651,7 +662,7 @@ class TitleScene(Scene):
                             self.whiteScreen.set_alpha(255)
                         if s.phase == 20:
                             self.manager.generate_rooms()
-                            self.manager.go_to(GameScene(3))
+                            self.manager.go_to(GameScene(0))
                         s.opacity += 12
                         self.whiteScreen.set_alpha(s.opacity)
                         s.phase += 1
