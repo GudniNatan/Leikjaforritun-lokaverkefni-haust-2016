@@ -18,7 +18,7 @@ class SceneManager(object):
         self.room = list()
 
     def go_to(self, scene):
-        if type(scene) is GameScene: #If the scene already exists
+        if type(scene) is GameScene:  # If the scene already exists
             try:
                 self.scene = self.room[scene.roomNumber]
                 print("Found room")
@@ -79,13 +79,14 @@ class GameScene(Scene):
         self.keyTexture = pygame.image.load(os.path.join('images', 'Small_Key_MC.gif')).convert_alpha()
         self.heartTexture = heart
         self.paused = False
-        self.entities = pygame.sprite.LayeredUpdates()
+        self.entities = pygame.sprite.LayeredDirty()
         self.npcs = pygame.sprite.Group()
         self.animations = list()
         self.collidables = list()
-        charset = aspect_scale(charset, (drawSize * 14, 100000))
+        charset = aspect_scale(charset, (drawSize * 15, 100000)) # Even though it shouldn't, this does affect character width and therefore AI
         character_sprite_size = (charset.get_width() / 18, charset.get_height() / 8, drawSize * 0.9)
-        self.player = Player(pygame.Rect(30, 30, drawSize-1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(0, charset.get_height() / 8 * 4, charset.get_width() / 18 * 3, charset.get_height() / 8 * 4)), character_sprite_size)
+        charsetRect = charset.get_rect()
+        self.player = Player(pygame.Rect(30, 30, drawSize-1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(0, charsetRect.bottom - (charsetRect.height / 8 * 4), charset.get_width() / 18 * 3, charsetRect.height / 8 * 4)), character_sprite_size)
         self.block_group = pygame.sprite.Group()
         self.action_group = pygame.sprite.Group()
         self.background_group = pygame.sprite.Group()
@@ -93,7 +94,6 @@ class GameScene(Scene):
         self.levelrect = pygame.Rect(0, 0, lineLength * drawSize, len(lines) * drawSize)
         self.gameSurface = pygame.Surface(self.levelrect.size)
         self.camera = pygame.Rect(0, 0, min(window_width, self.gameSurface.get_width()), min(window_height, self.gameSurface.get_height()))
-
 
         self.grid = Grid([lineLength, len(lines)])
         screenrect = pygame.Rect(0, 0, window_width, window_height)
@@ -108,7 +108,7 @@ class GameScene(Scene):
         Player = "Player"
         Melee enemy = "Stalker"
         Bow enemy = "Bowman"
-        Chest = Chest(contents)
+        Chest = "Chest", contents can be found at [0][0]
         """
         for i in xrange(len(lines)):
             for j in xrange(len(lines[i])):
@@ -119,7 +119,7 @@ class GameScene(Scene):
                     sprite = SimpleRectSprite(rect, sprite.image, True)
                     self.block_group.add(sprite)
                 if "Stalker" in lines[i][j]:
-                    stalker = Stalker(pygame.Rect(rect.x, rect.y, drawSize-1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(charset.get_width() / 18 * 3, charset.get_height() / 8 * 4, charset.get_width() / 18 * 3, charset.get_height() / 8 * 4)), character_sprite_size, self.player)
+                    stalker = Stalker(pygame.Rect(rect.x, rect.y, drawSize-1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(charset.get_width() / 18 * 3, charsetRect.bottom - (charsetRect.height / 8 * 4), charset.get_width() / 18 * 3, charsetRect.height / 8 * 4)), character_sprite_size, self.player)
                     self.npcs.add(stalker)
                 if "Player" in lines[i][j]:
                     self.player.update_player(pygame.Rect(rect.x, rect.y, drawSize - 1, drawSize / 5 * 3), 180)
@@ -198,7 +198,7 @@ class GameScene(Scene):
         self.cameraLeeway.center = self.player.collision_rect.center
 
     def render(self, screen):
-        #Game surface
+        # Game surface
         screen.fill(BLACK)
         self.gameSurface.blit(self.backgroundSurface, (0,0))
         for box in self.character_collision_boxes:
@@ -214,7 +214,7 @@ class GameScene(Scene):
         #self.gameSurface.fill(BLACK, self.player.collision_rect)
         screen.blit(self.gameSurface.subsurface(self.camera), (self.offset.x, self.offset.y))
         #screen.blit(pygame.transform.scale(gameSurface, window_size), (0, 0))
-        #UI
+        # UI
         self.hearts.draw(screen)
         self.keys.draw(screen)
         if self.paused:
@@ -266,7 +266,7 @@ class GameScene(Scene):
         for trigger in self.triggers:
             if trigger.rect.colliderect(self.player.collision_rect):
                 if trigger.name == "GotoRoom":
-                    self.player.godMode
+                    self.player.godMode = True
                     params = {'room': self.sword_texture, 'phase': 0, "gotoWhere": trigger.gotoWhere, 'vx':self.player.vx, 'vy':self.player.vy, 'nextScene': trigger.leadsToRoom}
                     self.animations.append(Animation("leaveRoom", params))
                     self.nextSceneThread = threading.Thread(target=self.processNextRoom, args=(trigger.leadsToRoom,))
@@ -336,11 +336,11 @@ class GameScene(Scene):
                             self.swordsprite.rect.top += 5
                             pass
                         s.phase += 1
-                    #Animations needed:
-                        #Sword swing x
-                        #Death
-                        #Door opening x
-                        #Chest opening
+                    # Animations needed:
+                        # Sword swing x
+                        # Death
+                        # Door opening x
+                        # Chest opening
                     if s.name == "health":
                         if s.phase >= 13:
                             self.animations.remove(s)
@@ -605,7 +605,8 @@ class TitleScene(Scene):
     def __init__(self):
         super(TitleScene, self).__init__()
         background = pygame.image.load(os.path.join('images', 'background test.png')).convert_alpha()
-        self.menu_background = pygame.image.load(os.path.join('images', 'background menu.png')).convert_alpha()
+        background = pygame.transform.scale(background, window_size)
+        self.menu_background = SimpleSprite((0, 0), pygame.image.load(os.path.join('images', 'background menu.png')).convert_alpha())
         self.logo = pygame.image.load(os.path.join('images', 'logo pixel.png')).convert_alpha()
         self.logo_sprite = SimpleRectSprite(pygame.Rect(425, 325, 400, 400), self.logo, True)
         self.font = pygame.font.SysFont('Consolas', 56)
@@ -628,15 +629,17 @@ class TitleScene(Scene):
         self.whiteScreen = pygame.Surface(window_size)
         self.whiteScreen.fill(WHITE)
         self.whiteScreen.set_alpha(0)
+        self.screenRect = pygame.Rect((0, 0), window_size)
+        self.menu_background.rect.center = self.screenRect.center
+        self.logo_sprite.rect.center = (self.screenRect.centerx, self.menu_background.rect.centery + 150)
 
     def render(self, screen):
         self.backgroundSprites.draw(screen)
-        screen.blit(self.menu_background, (0,0))
+        screen.blit(self.menu_background.image, self.menu_background.rect)
         text1 = self.font.render('Lokaverkefni', True, tuple(self.color))
         text2 = self.sfont.render('> press space to start <', True, WHITE)
-        screen.blit(text1, (460, 100))
-        screen.blit(text2, (425, self.textCoord))
-        self.logo_sprite.rect.centerx = screen.get_rect().centerx
+        screen.blit(text1, (self.menu_background.rect.left + 460, self.menu_background.rect.top + 100))
+        screen.blit(text2, (self.menu_background.rect.left + 425, self.menu_background.rect.top + self.textCoord))
         screen.blit(self.logo_sprite.image, self.logo_sprite.rect)
         screen.blit(self.whiteScreen, (0, 0))
 

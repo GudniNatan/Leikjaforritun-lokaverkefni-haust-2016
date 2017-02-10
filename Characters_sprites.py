@@ -6,7 +6,7 @@ from Objects import *
 from Methods import *
 
 
-class Character(pygame.sprite.Sprite):
+class Character(pygame.sprite.DirtySprite):
     def __init__(self, rect, charset, sprite_size_rect):
         super(Character, self).__init__()
         self.collision_rect = rect
@@ -16,7 +16,7 @@ class Character(pygame.sprite.Sprite):
         self.realY = self.collision_rect.y
         self.startPoint = [self.collision_rect.x, self.collision_rect.y]
         self.gridPos = [self.collision_rect.center[0] / drawSize, self.collision_rect.center[1] / drawSize]
-        self.baseSpeed = 0.004 * drawSize
+        self.baseSpeed = 0.003 * drawSize
         self.health = 3
         self.maxHealth = self.health
         self.charset = charset
@@ -29,6 +29,8 @@ class Character(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.bottom = rect.bottom - 1
         self.collision_rect.w = self.sprite_size_rect[0]
+        if self.collision_rect.w < drawSize / 2 or self.collision_rect.w > drawSize:
+            self.collision_rect.w = drawSize - 1
         self.walking_phase = 1
         self.moving = False
         self.stunned = False
@@ -113,7 +115,7 @@ class Character(pygame.sprite.Sprite):
             time = 1
         original_x = self.realX
         original_y = self.realY
-        pixellimit = 6 # should not ever be higher than drawsize / 2
+        pixellimit = 6  # should not ever be higher than drawsize / 2
         if -pixellimit < self.vx * time < pixellimit:
             self.realX += self.vx * time
         elif self.vx < 0:

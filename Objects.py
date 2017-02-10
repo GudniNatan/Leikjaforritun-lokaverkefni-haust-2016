@@ -12,7 +12,7 @@ class Box(object):
         self.rect = rect
 
 
-class Block(pygame.sprite.Sprite): # Simple block
+class Block(pygame.sprite.DirtySprite): # Simple block
     def __init__(self, rect, color):
         super(Block, self).__init__()
         self.image = pygame.Surface([rect.w, rect.h])
@@ -21,7 +21,7 @@ class Block(pygame.sprite.Sprite): # Simple block
         self.rect.topleft = rect.topleft
 
 
-class SimpleSprite(pygame.sprite.Sprite):  # Molds rect to sprite
+class SimpleSprite(pygame.sprite.DirtySprite):  # Molds rect to sprite
     def __init__(self, top_left_point, surface):
         super(SimpleSprite, self).__init__()
         self.image = surface
@@ -29,7 +29,7 @@ class SimpleSprite(pygame.sprite.Sprite):  # Molds rect to sprite
         self.rect.topleft = top_left_point
 
 
-class SimpleRectSprite(pygame.sprite.Sprite):  # Molds sprite to rect, either by cropping or rescaling
+class SimpleRectSprite(pygame.sprite.DirtySprite):  # Molds sprite to rect, either by cropping or rescaling
     def __init__(self, rect, surface, scale=False):
         super(SimpleRectSprite, self).__init__()
         self.rect = pygame.Rect(rect)
