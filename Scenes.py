@@ -226,6 +226,7 @@ class GameScene(Scene):
         screen.blit(self.sword_icon.subsurface(pygame.Rect(0, 0, 44, 44)), (1000, 20))
 
     def update(self, time):
+        self.grid.update_grid(self.collidables + self.character_collision_boxes)
         if self.paused:  # Don't update anything when paused, could add in any special exceptions here
             return
         # Update character positions, speed and layers

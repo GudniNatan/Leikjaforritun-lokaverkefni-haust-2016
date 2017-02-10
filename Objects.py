@@ -151,7 +151,8 @@ class Animation(object):
     def __eq__(self, other):
         return self.name == other.name
 
-class Trigger(object):
+
+class Trigger(object):  # Very similar to Animation
     def __init__(self, name, rect, params=dict()):
         super(Trigger, self).__init__()
         self.name = name
@@ -160,7 +161,7 @@ class Trigger(object):
         for key, value in params.iteritems():
             setattr(self, key, value)
 
-    def set_place(self, level):
+    def set_place(self, level):  # Will search for tags and make a big trigger box
         try:
             for i in range(len(level)):
                 for j in range(len(level[i])):
@@ -169,10 +170,8 @@ class Trigger(object):
                             self.rect = pygame.Rect(j * drawSize, i * drawSize, drawSize, drawSize)
                         else:
                             self.rect = self.rect.union(pygame.Rect(j * drawSize, i * drawSize, drawSize, drawSize))
-        except:
+        except Exception:
             pass
-
-
 
 
 class Grid(object):

@@ -9,7 +9,7 @@ ORANGE = (255, 153, 0)
 
 #GRID_SIZE = [60, 60]     # Width and height of maze (can fit 355x635 if drawSize is 1)
 startPoint = [14, 14]   # Starting position of generator (and player?)
-drawSize = 35
+drawSize = 50
 halfDrawSize = drawSize / 2
 window_size = window_width, window_height = 1280, 720
 
