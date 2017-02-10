@@ -13,7 +13,8 @@ from math import sin
 from rooms import get_room
 
 class SceneManager(object):
-    def __init__(self):
+    def __init__(self, screen):
+        self.screen = screen
         self.go_to(TitleScene())
         self.room = list()
 
@@ -68,7 +69,7 @@ class GameScene(Scene):
         self.nextSceneThread = None
         self.roomNumber = room
         lineLength = len(max(lines, key=len))
-        charset = pygame.image.load(os.path.join('images', 'charset.png')).convert_alpha()
+        charset = pygame.image.load(os.path.join('images', 'charset2.png')).convert_alpha()
         shadow = pygame.image.load(os.path.join('images', 'shadow.png')).convert_alpha()
         walls = pygame.image.load(os.path.join('images', 'veggur2.png')).convert_alpha()
         heart = pygame.image.load(os.path.join('images', 'hearts.png')).convert_alpha()
@@ -83,7 +84,7 @@ class GameScene(Scene):
         self.npcs = pygame.sprite.Group()
         self.animations = list()
         self.collidables = list()
-        charset = aspect_scale(charset, (drawSize * 15, 100000)) # Even though it shouldn't, this does affect character width and therefore AI
+        charset = aspect_scale(charset, (drawSize * 16, 100000)) # Even though it shouldn't, this does affect character width and therefore AI
         character_sprite_size = (charset.get_width() / 18, charset.get_height() / 8, drawSize * 0.9)
         charsetRect = charset.get_rect()
         self.player = Player(pygame.Rect(30, 30, drawSize-1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(0, charsetRect.bottom - (charsetRect.height / 8 * 4), charset.get_width() / 18 * 3, charsetRect.height / 8 * 4)), character_sprite_size)
@@ -97,7 +98,7 @@ class GameScene(Scene):
 
         self.grid = Grid([lineLength, len(lines)])
         screenrect = pygame.Rect(0, 0, window_width, window_height)
-        self.cameraLeeway = pygame.Rect(0, 0, window_width / 8, window_height / 8)
+        self.cameraLeeway = pygame.Rect(0, 0, window_width / (drawSize / 8), window_height / (drawSize / 8))
         self.cameraLeeway.center = screenrect.center
         self.levelrect.center = screenrect.center
         self.doors = list()
@@ -237,9 +238,7 @@ class GameScene(Scene):
             if type(entity) is not Player:
                 entity.update_speed()
             entity.update_position(time, self.collidables + self.character_collision_boxes)
-        for x in xrange(len(self.collidables)):
-            if x == len(self.collidables):
-                break
+        for x in xrange(len(self.collidables) - 1):
             if not self.collidables[x].alive():
                 self.collidables.pop(x)
         # Update camera
@@ -548,17 +547,17 @@ class GameScene(Scene):
     def update_hearts(self, heartTexture):
         self.heartList = list()
         for i in xrange(self.player.maxHealth):
-            rect = pygame.Rect((drawSize * 10) +(40 * i), 20, 7 * 4, 7 * 4)
+            rect = pygame.Rect((window_width / 6) +(40 * i), 20, 7 * 4, 7 * 4) #Edit this to change heart locations
             if self.player.health > i:
                 self.heartList.append(SimpleRectSprite(rect, heartTexture.subsurface(pygame.Rect(0,0,8,8)), True))
             else:
                 self.heartList.append(SimpleRectSprite(rect, heartTexture.subsurface(pygame.Rect(8*12, 0, 8, 8)), True))
         self.hearts = pygame.sprite.Group(self.heartList)
 
-    def update_keys(self, keyTexture):
+    def update_keys(self, keyTexture): #Edit this to change key icon locations
         self.keyList = list()
         for i in xrange(self.player.keys):
-            rect = pygame.Rect((drawSize * 20) + (40 * i), 20, 7 * 5, 7 * 5)
+            rect = pygame.Rect((window_width / 2) + (40 * i), 20, 7 * 5, 7 * 5)
             self.keyList.append(SimpleRectSprite(rect, self.keyTexture, True))
         self.keys = pygame.sprite.Group(self.keyList)
 
@@ -666,7 +665,7 @@ class TitleScene(Scene):
                             self.whiteScreen.set_alpha(255)
                         if s.phase == 20:
                             self.manager.generate_rooms()
-                            self.manager.go_to(GameScene(0))
+                            self.manager.go_to(GameScene(3))
                         s.opacity += 12
                         self.whiteScreen.set_alpha(s.opacity)
                         s.phase += 1
