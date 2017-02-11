@@ -27,7 +27,7 @@ def main():
     pygame.time.set_timer(pathfindingEvent, 300)
     pygame.time.set_timer(animationEvent, 42)  # approx 24 times per second
     running = True
-
+    fpsAverage = list()
     sfont = pygame.font.SysFont('Consolas', 12)
 
     # Game loop
@@ -38,6 +38,11 @@ def main():
         manager.scene.render(screen)
         text1 = sfont.render("fps:" + str(clock.get_fps()), False, WHITE)
         screen.blit(text1, (0, 0))
+        """fpsAverage.append(clock.get_fps())
+        if len(fpsAverage) > 200:
+            fpsAverage.pop(0)
+        text2 = sfont.render("avg:" + str(reduce(lambda x, y: x + y, fpsAverage) / len(fpsAverage)), False, WHITE)
+        screen.blit(text2, (0, 13))"""
         pygame.display.update()
         manager.scene.handle_events(pygame.event.get())
         manager.scene.update(clock.get_time())

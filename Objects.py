@@ -48,12 +48,25 @@ class SimpleRectSprite(pygame.sprite.DirtySprite):  # Molds sprite to rect, eith
         self.move((x - self.rect.x, y - self.rect.y))
 
 
-class ActionObject(object):
+class ConjoinedSpriteGroup(pygame.sprite.DirtySprite):
+    def __init__(self, spriteGroup=pygame.sprite.Group()):
+        super(ConjoinedSpriteGroup, self).__init__()
+        rects = [sprite.rect for sprite in spriteGroup]
+        self.rect = rects[0].unionall(rects)
+        self.image = pygame.Surface(self.rect.size)
+        for sprite in spriteGroup:
+            self.image.blit(sprite.image, (sprite.rect.x - self.rect.x, sprite.rect.y - self.rect.y))
+
+
+class ActionObject(pygame.sprite.DirtySprite):
     def __init__(self, spriteGroup=pygame.sprite.Group()):
         super(ActionObject, self).__init__()
         self.spriteGroup = spriteGroup
         rects = [sprite.rect for sprite in self.spriteGroup]
         self.rect = rects[0].unionall(rects)
+        self.image = pygame.Surface(self.rect.size)
+        for sprite in self.spriteGroup:
+            self.image.blit(sprite.image, (sprite.rect.x - self.rect.x, sprite.rect.y - self.rect.y))
 
     def move(self, (x, y)):
         for sprite in self.spriteGroup:
@@ -68,6 +81,7 @@ class ActionObject(object):
     def kill(self):
         for sprite in self.spriteGroup:
             sprite.kill()
+        super(ActionObject, self).kill()
 
 class Door(SimpleRectSprite):
     def __init__(self, rect, surface, rotation, parent_surface, locked=False, is_open=False, scale=False):

@@ -133,34 +133,34 @@ class Character(pygame.sprite.DirtySprite):
         self.next_location = next_location
 
         for object in collidables:
-            if object == self.collision_rect:
-                continue
             if object.rect.colliderect(next_location):
+                if object == self.collision_rect:
+                    continue
                 # Flats
                 if self.vx > 0 and object.rect.colliderect(
                         pygame.Rect(next_location.left + next_location.w, rect.top, 0, next_location.h)):  # Left
                     self.realX = object.rect.left - next_location.w
-                if self.vx < 0 and object.rect.colliderect(
+                elif self.vx < 0 and object.rect.colliderect(
                         pygame.Rect(next_location.right - next_location.w, rect.top, 0, next_location.h)):  # right
                     self.realX = object.rect.right
                 if self.vy > 0 and object.rect.colliderect(
                         pygame.Rect(rect.left, next_location.top + next_location.h, next_location.w, 0)):  # top
                     self.realY = object.rect.top - next_location.h
-                if self.vy < 0 and object.rect.colliderect(
+                elif self.vy < 0 and object.rect.colliderect(
                         pygame.Rect(rect.left, next_location.bottom - next_location.h, next_location.w, 0)):  # bottom
                     self.realY = object.rect.bottom
-                # Corners
-                if object.rect.collidepoint(rect.topleft[0] + 0.1, rect.topleft[1] + 0.1):
+                # Corners, might not actually be needed
+                """if object.rect.collidepoint(rect.topleft[0] + 0.1, rect.topleft[1] + 0.1):
                     [self.realX, self.realY] = [original_x + 0.1, original_y + 1.1]
                 if object.rect.collidepoint(rect.bottomleft[0] + 0.1, rect.bottomleft[1] - 0.1):
                     [self.realX, self.realY] = [original_x + 1.1, original_y - 0.1]
                 if object.rect.collidepoint(rect.topright[0] - 0.1, rect.topright[1] + 0.1):
                     [self.realX, self.realY] = [original_x - 0.1, original_y + 1.1]
                 if object.rect.collidepoint(rect.bottomright[0] - 0.1, rect.bottomright[1] - 0.1):
-                    [self.realX, self.realY] = [original_x - 1.1, original_y - 0.1]
+                    [self.realX, self.realY] = [original_x - 1.1, original_y - 0.1]"""
 
-            if object.rect.collidepoint(rect.center):   # Moves you out if fully inside a block
-                [self.realX, self.realY] = self.startPoint
+                if object.rect.collidepoint(rect.center):   # Moves you out if fully inside a block
+                    [self.realX, self.realY] = self.startPoint
         rect.x = self.realX
         rect.y = self.realY
         self.gridPos = [self.collision_rect.center[0] / drawSize, self.collision_rect.center[1] / drawSize]

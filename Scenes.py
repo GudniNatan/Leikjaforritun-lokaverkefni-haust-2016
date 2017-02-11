@@ -88,8 +88,8 @@ class GameScene(Scene):
         character_sprite_size = (charset.get_width() / 18, charset.get_height() / 8, drawSize * 0.9)
         charsetRect = charset.get_rect()
         self.player = Player(pygame.Rect(30, 30, drawSize-1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(0, charsetRect.bottom - (charsetRect.height / 8 * 4), charset.get_width() / 18 * 3, charsetRect.height / 8 * 4)), character_sprite_size)
-        self.block_group = pygame.sprite.Group()
-        self.action_group = pygame.sprite.Group()
+        self.block_group = pygame.sprite.OrderedUpdates()
+        self.action_group = pygame.sprite.RenderUpdates()
         self.background_group = pygame.sprite.Group()
         self.grand_clock = pygame.time.Clock()
         self.levelrect = pygame.Rect(0, 0, lineLength * drawSize, len(lines) * drawSize)
@@ -172,7 +172,37 @@ class GameScene(Scene):
                 else:
                     tag.set_place(lines)
 
-        self.collidables.extend(self.block_group)
+        # Merge individual blocks into lines
+        self.block_lines = pygame.sprite.OrderedUpdates()
+        lastBlock = None
+        currentLineSpriteGroup = pygame.sprite.Group()
+        for block in self.block_group:
+            if lastBlock is None:
+                lastBlock = block
+                currentLineSpriteGroup.add(block)
+                continue
+            if (lastBlock.rect.y == block.rect.y and lastBlock.rect.height == block.rect.height and lastBlock.rect.right == block.rect.left):
+                currentLineSpriteGroup.add(block)
+            else:
+                self.block_lines.add(ConjoinedSpriteGroup(currentLineSpriteGroup))
+                currentLineSpriteGroup = pygame.sprite.Group(block)
+            lastBlock = block
+        self.block_lines.add(ConjoinedSpriteGroup(currentLineSpriteGroup))
+
+        #Merge lines into large blocks
+        """self.large_block_group = pygame.sprite.Group()
+        tempasd = pygame.sprite.Group()
+        for line in self.block_lines:
+            for line2 in self.block_lines:
+                if (lastBlock.rect.x == block.rect.x and lastBlock.rect.width == block.rect.width and (lastBlock.rect.top == block.rect.bottom)):
+                    for large_block in self.large_block_group:
+                        if large_block.rect.contains(line2):
+                            break
+                    else:
+                        tempasd.add(line2)
+        self.large_block_group.add(ConjoinedSpriteGroup(pygame.sprite.Group()))"""
+
+        self.collidables.extend(self.block_lines)
 
         self.entities.add(self.player, self.npcs)
         self.character_collision_boxes = [char.get_collision_box() for char in self.entities]
@@ -265,6 +295,7 @@ class GameScene(Scene):
         # Handle location triggers
         for trigger in self.triggers:
             if trigger.rect.colliderect(self.player.collision_rect):
+                # Collision/movement based triggers
                 if trigger.name == "GotoRoom":
                     self.player.godMode = True
                     params = {'room': self.sword_texture, 'phase': 0, "gotoWhere": trigger.gotoWhere, 'vx':self.player.vx, 'vy':self.player.vy, 'nextScene': trigger.leadsToRoom}
@@ -273,6 +304,9 @@ class GameScene(Scene):
                     self.nextSceneThread.daemon = True
                     self.nextSceneThread.start()
                 self.triggers.remove(trigger)
+            #Trigger types needed:
+                #Enemy death trigger
+                #
 
     def handle_events(self, events):
         for event in events:
@@ -349,7 +383,10 @@ class GameScene(Scene):
                         s.sprite.image = SimpleRectSprite(pygame.Rect(s.sprite.rect), self.heartTexture.subsurface(pygame.Rect((s.phase) * 8, 0, 8, 8)), True).image
                         s.phase += 1
                     if s.name == "openDoor":
-                        if s.phase >= 6 or s.door.is_open:
+                        if s.door.is_open:
+                            self.animations.remove(s)
+                            continue
+                        if s.phase >= 6:
                             s.door.is_open = True
                             self.animations.remove(s)
                             if s.door.rotation == 0:
@@ -391,7 +428,6 @@ class GameScene(Scene):
                                         pass
                                     else:
                                         tag.set_place(self.lines)
-
                             continue
                         if s.vx > 0:
                             self.player.vx = self.player.baseSpeed
@@ -552,14 +588,14 @@ class GameScene(Scene):
                 self.heartList.append(SimpleRectSprite(rect, heartTexture.subsurface(pygame.Rect(0,0,8,8)), True))
             else:
                 self.heartList.append(SimpleRectSprite(rect, heartTexture.subsurface(pygame.Rect(8*12, 0, 8, 8)), True))
-        self.hearts = pygame.sprite.Group(self.heartList)
+        self.hearts = pygame.sprite.RenderUpdates(self.heartList)
 
     def update_keys(self, keyTexture): #Edit this to change key icon locations
         self.keyList = list()
         for i in xrange(self.player.keys):
             rect = pygame.Rect((window_width / 2) + (40 * i), 20, 7 * 5, 7 * 5)
             self.keyList.append(SimpleRectSprite(rect, self.keyTexture, True))
-        self.keys = pygame.sprite.Group(self.keyList)
+        self.keys = pygame.sprite.RenderUpdates(self.keyList)
 
 
     def processNextRoom(self, scene):
@@ -567,7 +603,7 @@ class GameScene(Scene):
             self.nextScene = self.manager.room[scene]
         except IndexError:
             self.nextScene = GameScene(scene)
-        print "Done"
+        print("Room " + str(scene) + " loaded")
 
     def teleportPlayerToTag(self, playerLocation):
         found_tag = False
@@ -665,7 +701,7 @@ class TitleScene(Scene):
                             self.whiteScreen.set_alpha(255)
                         if s.phase == 20:
                             self.manager.generate_rooms()
-                            self.manager.go_to(GameScene(3))
+                            self.manager.go_to(GameScene(0))
                         s.opacity += 12
                         self.whiteScreen.set_alpha(s.opacity)
                         s.phase += 1
