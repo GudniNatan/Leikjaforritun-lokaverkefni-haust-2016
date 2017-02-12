@@ -70,7 +70,7 @@ class BuildExe:
         self.copyright = "Copyright (c) 2016-2017 Gudni Natan Gunnarsson."
 
         # Description
-        self.project_description = "Description"
+        self.project_description = " FOR3L3DU Leikjaforritun Afangaverkefni"
 
         # Icon file (None will use pygame default icon)
         self.icon_file = None

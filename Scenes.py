@@ -508,7 +508,10 @@ class GameScene(Scene):
                     self.animations.append(Animation("health", params))
                     self.player.displayHealth -= 1
                 elif self.player.health <= 0:
-                    self.manager.go_to(GameOverScene())
+                    gamesurface = pygame.Surface(self.manager.screen.get_size())
+                    gamesurface.fill(BLACK)
+                    gamesurface.blit(self.gameSurface.subsurface(self.camera), (self.offset.x, self.offset.y))
+                    self.manager.go_to(GameOverScene(gamesurface))
 
             if event.type == keyEvent:
                 print keyEvent
@@ -667,6 +670,7 @@ class GameScene(Scene):
         self.nextSceneThread.start()
 
     def event_timers(self):
+        return
         clock = pygame.time.Clock()
         self.timerRunning = True
         print "Running timer!"
@@ -816,22 +820,37 @@ class TextScrollScene(Scene):
 
 
 class GameOverScene(Scene):
-    def __init__(self):
+    def __init__(self, game_scene_background):
         super(GameOverScene, self).__init__()
+        if pygame.mixer.get_init():
+            self.mixer = pygame.mixer.Channel(1)
+            self.mixer.set_volume(0.3)
+            self.music = pygame.mixer.Sound(os.path.join('sounds', 'tengsli 1.1 loop.ogg'))
+            self.mixer.play(self.music, -1,)
         font = pygame.font.SysFont('Consolas', 56)
         small_font = pygame.font.SysFont('Consolas', 32)
         self.text = font.render('Game Over', True, WHITE)
         self.text2 = small_font.render('Press space to try again.', True, WHITE)
-        if pygame.mixer.get_init():
-            self.mixer = pygame.mixer.Channel(0)
-            self.mixer.set_volume(0.5)
-            self.music = pygame.mixer.Sound(os.path.join('sounds', 'tengsli 1.1 loop.ogg'))
-            self.mixer.play(self.music, -1,)
+        self.text3 = font.render('Game Over', True, BLACK)
+        self.text4 = small_font.render('Press space to try again.', True, BLACK)
+        self.text3.set_alpha(120)
+        self.text4.set_alpha(120)
+        self.background = game_scene_background
+        self.blackScreen = pygame.Surface(self.background.get_size())
+        self.blackScreen.fill(BLACK)
+        self.blackScreen.set_alpha(0)
+        self.animations = list()
+        self.animations.append(Animation("fadeOutOfGame", {'phase': 0}))
+        self.textRect = pygame.Rect(0, 0, max(self.text.get_width(), self.text2.get_width()), 500)
+        self.textRect.center = pygame.Rect((0, 0), window_size).center
 
     def render(self, screen):
-        screen.fill(BLACK)
-        screen.blit(self.text, (500, 50))
-        screen.blit(self.text2, (440, 120))
+        screen.blit(self.background, (0 ,0))
+        screen.blit(self.blackScreen, (0, 0))
+        screen.blit(self.text3, (self.textRect.left + 85, self.textRect.top + 55))
+        screen.blit(self.text4, (self.textRect.left + 5, self.textRect.top + 125))
+        screen.blit(self.text, (self.textRect.left + 80, self.textRect.top + 50))
+        screen.blit(self.text2, (self.textRect.left, self.textRect.top + 120))
 
     def update(self, time):
         pass
@@ -844,3 +863,14 @@ class GameOverScene(Scene):
                 if pygame.mixer.get_init():
                     self.mixer.fadeout(500)
                 self.manager.go_to(TitleScene())
+            if event.type == animationEvent:
+                for s in self.animations:
+                    if s.name == "fadeOutOfGame":
+                        if s.phase >= 40:
+                            print "Done"
+                            self.animations.remove(s)
+                            continue
+                        self.blackScreen.set_alpha(s.phase * 5)
+                        s.phase += 1
+
+

@@ -14,9 +14,6 @@ def main():
     pygame.display.set_caption('FOR3L3DU')
 
     # Setup
-    charset = pygame.image.load(os.path.join('images', 'charset.png')).convert_alpha()
-    gridImage = pygame.image.load(os.path.join('images', 'grid 16x16 transculent.png')).convert_alpha()
-    gridImage = pygame.transform.scale(gridImage, (gridImage.get_rect().w * 24 / 16, gridImage.get_rect().h * 24 / 16))
     try:
         pygame.mixer.init()
     except pygame.error as err:
