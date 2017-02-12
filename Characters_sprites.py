@@ -5,7 +5,6 @@ from Constants import *
 from Objects import *
 from Methods import *
 
-
 class Character(pygame.sprite.DirtySprite):
     def __init__(self, rect, charset, sprite_size_rect):
         super(Character, self).__init__()
@@ -15,7 +14,7 @@ class Character(pygame.sprite.DirtySprite):
         self.realX = self.collision_rect.x
         self.realY = self.collision_rect.y
         self.startPoint = [self.collision_rect.x, self.collision_rect.y]
-        self.gridPos = [self.collision_rect.center[0] / drawSize, self.collision_rect.center[1] / drawSize]
+        self.gridPos = [self.collision_rect.centerx / drawSize, self.collision_rect.centery / drawSize]
         self.baseSpeed = 0.003 * drawSize
         self.health = 3
         self.maxHealth = self.health
@@ -54,7 +53,8 @@ class Character(pygame.sprite.DirtySprite):
             self.update_sprite()
             return
         direction = 180
-        if vx and vy:
+        direction += vec2d_jdm.Vec2D(vy, -vx).get_angle() # Please note the += 180, get angle will return negatives
+        """if vx and vy:
             if vy < 0 and vx < 0:
                 direction = 315
             if vy < 0 and vx > 0:
@@ -66,12 +66,12 @@ class Character(pygame.sprite.DirtySprite):
         else:
             if vx > 0:
                 direction = 90
-            if vx < 0:
+            elif vx < 0:
                 direction = 270
             if vy > 0:
                 direction = 180
-            if vy < 0:
-                direction = 0
+            elif vy < 0:
+                direction = 0"""
         if vx == 0 and vy == 0:
             self.moving = False
             self.walking_phase = 1
@@ -163,7 +163,7 @@ class Character(pygame.sprite.DirtySprite):
                     [self.realX, self.realY] = self.startPoint
         rect.x = self.realX
         rect.y = self.realY
-        self.gridPos = [self.collision_rect.center[0] / drawSize, self.collision_rect.center[1] / drawSize]
+        self.gridPos = [self.collision_rect.centerx / drawSize, self.collision_rect.centery / drawSize]
         self.rect.midbottom = (rect.centerx, rect.bottom - 1)
 
     def get_collision_box(self):
@@ -181,7 +181,7 @@ class Character(pygame.sprite.DirtySprite):
         try:
             if self.godMode:
                 return
-        except Exception:
+        except AttributeError:
             pass
         self.stunned = True
         self.health -= damage
@@ -226,7 +226,7 @@ class Player(Character):
         self.realX = self.collision_rect.x
         self.realY = self.collision_rect.y
         self.startPoint = [self.collision_rect.x, self.collision_rect.y]
-        self.gridPos = [self.collision_rect.center[0] / drawSize, self.collision_rect.center[1] / drawSize]
+        self.gridPos = [self.collision_rect.centerx / drawSize, self.collision_rect.centery / drawSize]
         self.image = pygame.Surface((0, 0))
         self.direction = direction
         self.last_direction = None
@@ -244,6 +244,8 @@ class Player(Character):
 
     def update_position(self, time, collidables):
         if self.health == 0:
+            self.stunned = True
+            self.directionLock = True
             return
         super(Player, self).update_position(time, collidables)
 
@@ -283,7 +285,7 @@ class Stalker(NPC):
         speed = self.baseSpeed
         rect = self.collision_rect
         next_square = path[0].value
-        if next_square[0] < rect.right / drawSize:
+        """if next_square[0] < rect.right / drawSize:
             self.vx = -speed
         elif next_square[0] > rect.left / drawSize:
             self.vx = speed
@@ -294,7 +296,12 @@ class Stalker(NPC):
         elif next_square[1] > rect.top / drawSize:
             self.vy = speed
         else:
-            self.vy = 0
+            self.vy = 0"""
+        next_square_rect = pygame.Rect(next_square[0] * drawSize, next_square[1] * drawSize, drawSize, drawSize)
+        vector = None
+        vector = CreateVectorFromCoordinates(self.collision_rect.center, next_square_rect.center)
+        normalVector = vector.normal()
+        (self.vx, self.vy) = (normalVector.x * speed, normalVector.y * speed)
         self.set_sprite_direction()
 
         if self.vx == self.vy == 0:
@@ -313,8 +320,9 @@ class Bowman(NPC):
     # Will attempt to get a straight line shot at the player, and back up if the player is too close.
     def __init__(self, rect, charset, sprite_size_rect, player):
         super(Bowman, self).__init__(rect, charset, sprite_size_rect)
-        self.baseSpeed = 0.04
+        self.baseSpeed *= 0.6
         self.player = player
+        self.readyToShoot = False
     def update_speed(self):
         # Follows path
         path = self.path
@@ -346,3 +354,9 @@ class Bowman(NPC):
         if self.stunned:
             return
         super(Bowman, self).update_position(time, collidables)
+
+    def findShootingSpot(self, grid):
+        if max(self.gridPos[0], self.player.gridPos[0]) - min(self.gridPos[0], self.player.gridPos[0]) >= max(self.gridPos[1], self.player.gridPos[1]) - min(self.gridPos[1], self.player.gridPos[1]):
+            self.update_path(grid, self.gridPos, [self.gridPos[0], self.player.gridPos[1]])
+        else:
+            self.update_path(grid, self.gridPos, [self.player.gridPos[0], self.gridPos[1]])

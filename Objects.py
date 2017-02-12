@@ -13,7 +13,7 @@ class Box(object):
 
 
 class Block(pygame.sprite.DirtySprite): # Simple block
-    def __init__(self, rect, color):
+    def __init__(self, rect, color=BLACK):
         super(Block, self).__init__()
         self.image = pygame.Surface([rect.w, rect.h])
         self.image.fill(color)
@@ -186,6 +186,13 @@ class Trigger(object):  # Very similar to Animation
                             self.rect = self.rect.union(pygame.Rect(j * drawSize, i * drawSize, drawSize, drawSize))
         except AttributeError:
             print("The placeWhere attribute is not set in " + str(self))
+
+
+class Timer(object):
+    def __init__(self, event, time):
+        self.event = event
+        self.rate = time
+        self.time = time
 
 
 class Grid(object):

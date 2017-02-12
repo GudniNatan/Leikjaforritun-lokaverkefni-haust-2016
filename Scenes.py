@@ -80,7 +80,7 @@ class GameScene(Scene):
         self.keyTexture = pygame.image.load(os.path.join('images', 'Small_Key_MC.gif')).convert_alpha()
         self.heartTexture = heart
         self.paused = False
-        self.entities = pygame.sprite.LayeredDirty()
+        self.entities = pygame.sprite.LayeredUpdates()
         self.npcs = pygame.sprite.Group()
         self.animations = list()
         self.collidables = list()
@@ -96,6 +96,12 @@ class GameScene(Scene):
         self.gameSurface = pygame.Surface(self.levelrect.size)
         self.camera = pygame.Rect(0, 0, min(window_width, self.gameSurface.get_width()), min(window_height, self.gameSurface.get_height()))
 
+
+        #Custom event timers
+        self.timerRunning = False
+        self.timers = list()
+
+        #Grid
         self.grid = Grid([lineLength, len(lines)])
         screenrect = pygame.Rect(0, 0, window_width, window_height)
         self.cameraLeeway = pygame.Rect(0, 0, window_width / (drawSize / 8), window_height / (drawSize / 8))
@@ -122,6 +128,10 @@ class GameScene(Scene):
                 if "Stalker" in lines[i][j]:
                     stalker = Stalker(pygame.Rect(rect.x, rect.y, drawSize-1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(charset.get_width() / 18 * 3, charsetRect.bottom - (charsetRect.height / 8 * 4), charset.get_width() / 18 * 3, charsetRect.height / 8 * 4)), character_sprite_size, self.player)
                     self.npcs.add(stalker)
+                if "Bowman" in lines[i][j]:
+                    bowman = Bowman(pygame.Rect(rect.x, rect.y, drawSize-1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(charset.get_width() / 18 * 6, charsetRect.bottom - (charsetRect.height / 8 * 4), charset.get_width() / 18 * 3, charsetRect.height / 8 * 4)), character_sprite_size, self.player)
+                    self.npcs.add(bowman)
+                    self.timers.append(Timer(bowmanShootEvent, random.randint(5000, 10000)))
                 if "Player" in lines[i][j]:
                     self.player.update_player(pygame.Rect(rect.x, rect.y, drawSize - 1, drawSize / 5 * 3), 180)
                 if 2 in lines[i][j]:
@@ -206,7 +216,8 @@ class GameScene(Scene):
 
         self.entities.add(self.player, self.npcs)
         self.character_collision_boxes = [char.get_collision_box() for char in self.entities]
-        self.grid.update_grid(self.collidables + self.character_collision_boxes)
+        #self.grid.update_grid(self.collidables + self.character_collision_boxes)
+        self.grid.update_grid(self.collidables)
         if self.character_collision_boxes:
             self.shadow = pygame.transform.scale(shadow, self.character_collision_boxes[0].rect.size)
         self.update_hearts(heart)
@@ -228,6 +239,7 @@ class GameScene(Scene):
             self.offset.y = (window_height - self.levelrect.h) / 2
         self.cameraLeeway.center = self.player.collision_rect.center
 
+
     def render(self, screen):
         # Game surface
         screen.fill(BLACK)
@@ -243,21 +255,28 @@ class GameScene(Scene):
             self.gameSurface.blit(self.swordsprite.image, self.swordsprite.rect)
         pygame.draw.rect(self.gameSurface, BLACK, pygame.Rect((0, 0), self.levelrect.size), 6)
         #self.gameSurface.fill(BLACK, self.player.collision_rect)
+        for npc in self.npcs:
+            if type(npc) is Bowman:
+                for brick in npc.pathBricks:
+                    self.gameSurface.fill(BLACK, brick.rect)
+                    pass
+
         screen.blit(self.gameSurface.subsurface(self.camera), (self.offset.x, self.offset.y))
         #screen.blit(pygame.transform.scale(gameSurface, window_size), (0, 0))
+
         # UI
         self.hearts.draw(screen)
         self.keys.draw(screen)
         if self.paused:
-            line_rect1 = pygame.Rect(screen.get_rect().w / 32 * 31, screen.get_rect().h / 16, screen.get_rect().w / 64, screen.get_rect().w / 64 * 3)
-            line_rect2 = pygame.Rect(screen.get_rect().w / 32 * 30, screen.get_rect().h / 16, screen.get_rect().w / 64, screen.get_rect().w / 64 * 3)
+            line_rect1 = pygame.Rect(screen.get_rect().w // 32 * 31, screen.get_rect().h // 16, screen.get_rect().w // 64, screen.get_rect().w // 64 * 3)
+            line_rect2 = pygame.Rect(screen.get_rect().w // 32 * 30, screen.get_rect().h // 16, screen.get_rect().w // 64, screen.get_rect().w // 64 * 3)
             pygame.draw.rect(screen, WHITE, line_rect1)
             pygame.draw.rect(screen, WHITE, line_rect2)
         screen.blit(self.swordsprite.image, (0,0))
         screen.blit(self.sword_icon.subsurface(pygame.Rect(0, 0, 44, 44)), (1000, 20))
 
     def update(self, time):
-        self.grid.update_grid(self.collidables + self.character_collision_boxes)
+        #self.grid.update_grid(self.collidables + self.character_collision_boxes)
         if self.paused:  # Don't update anything when paused, could add in any special exceptions here
             return
         # Update character positions, speed and layers
@@ -314,10 +333,10 @@ class GameScene(Scene):
                 pygame.event.post(pygame.event.Event(QUIT))
             if event.type == pygame.KEYDOWN and event.key == pygame.K_p:
                 self.paused = not self.paused
-            if self.paused:
-                continue
             if event.type == KEYDOWN and event.key == K_ESCAPE:
                 self.manager.go_to(TitleScene())
+            if self.paused:
+                continue
             if event.type == pygame.KEYDOWN and event.key == pygame.K_z:
                 if Animation("sword") not in self.animations:
                     params = {'sprite': self.sword_texture, 'phase': 0}
@@ -327,12 +346,13 @@ class GameScene(Scene):
             if event.type == pygame.KEYDOWN or event.type == pygame.KEYUP:
                 self.player.update_speed()
             if event.type == pathfindingEvent:
-
                 for char in self.npcs:
                     if type(char) is Stalker:
                         char.update_path(self.grid, char.gridPos, self.player.gridPos)
+                    if type(char) is Bowman:
+                        char.findShootingSpot(self.grid)
             if event.type == updateGridEvent:
-                self.grid.update_grid(self.collidables + self.character_collision_boxes)
+                self.grid.update_grid(self.collidables)
             if event.type == animationEvent:
                 # Update all active animations
                 for s in self.animations:
@@ -358,16 +378,16 @@ class GameScene(Scene):
                         if s.phase == 0:
                             self.sword_icon = pygame.transform.flip(self.sword_icon, True, False)
                         if 45 > (self.player.direction % 360) or (self.player.direction % 360) >= 315:
-                            self.swordsprite.rect.left -= 16
+                            self.swordsprite.rect.left -= drawSize * 0.7
                         elif 45 <= (self.player.direction % 360) < 135:
-                            self.swordsprite.rect.left -= 5
-                            self.swordsprite.rect.top += 5
+                            self.swordsprite.rect.left -= drawSize * 0.2
+                            self.swordsprite.rect.top += drawSize * 0.25
                         elif 135 <= (self.player.direction % 360) < 225:
-                            self.swordsprite.rect.top += 12
-                            self.swordsprite.rect.left -= 6
+                            self.swordsprite.rect.top += drawSize * 0.5
+                            self   .swordsprite.rect.left -= drawSize * 0.25
                         elif 225 <= (self.player.direction % 360) < 315:
-                            self.swordsprite.rect.left -= 16
-                            self.swordsprite.rect.top += 5
+                            self.swordsprite.rect.left -= drawSize * 0.7
+                            self.swordsprite.rect.top += drawSize * 0.25
                             pass
                         s.phase += 1
                     # Animations needed:
@@ -397,7 +417,7 @@ class GameScene(Scene):
                                 s.door.move_to((s.startRect.left - s.startRect.width, s.startRect.top))
                             elif s.door.rotation == 270:
                                 s.door.move_to((s.startRect.left, s.startRect.top - s.startRect.height))
-                            self.grid.update_grid(self.collidables + self.character_collision_boxes)
+                            self.grid.update_grid(self.collidables)
                             self.player.update_speed()
                             continue
                         self.player.vx = 0
@@ -429,6 +449,8 @@ class GameScene(Scene):
                                     else:
                                         tag.set_place(self.lines)
                             continue
+                        if s.phase == 0:
+                            self.player.directionLock = True
                         if s.vx > 0:
                             self.player.vx = self.player.baseSpeed
                         if s.vx < 0:
@@ -460,9 +482,9 @@ class GameScene(Scene):
             if event.type == swordSwingEvent:
                 boxes = self.make_surrounding_blocks(self.player.collision_rect)
                 blocks = pygame.sprite.Group()
-                blocks.add(boxes[self.player.direction/45])
-                #blocks.add(boxes[((self.player.direction/45) + 1) % 8])
-                for sprite in pygame.sprite.groupcollide(self.npcs, blocks, False, True):
+                blocks.add(boxes[int(self.player.direction//45) % 8])
+                # blocks.add(boxes[((self.player.direction/45) + 1) % 8])
+                for sprite in pygame.sprite.groupcollide(self.npcs, blocks, False, False):
                     sprite.hit()
 
             if event.type == unstunEvent:
@@ -488,18 +510,18 @@ class GameScene(Scene):
                 elif self.player.health <= 0:
                     self.manager.go_to(GameOverScene())
 
-
             if event.type == keyEvent:
-                self.keyList = list()
-                for i in xrange(self.player.keys):
-                    rect = pygame.Rect((drawSize * 20) + (40 * i), 20, 7 * 5, 7 * 5)
-                    self.keyList.append(SimpleRectSprite(rect, self.keyTexture, True))
-                self.keys = pygame.sprite.Group(self.keyList)
+                print keyEvent
+                self.update_keys(self.keyTexture)
+
+            if event.type == bowmanShootEvent:
+                print "bowmanShootEvent"
+                self.update_keys(self.keyTexture)
 
             if event.type == actionEvent:  # When the player presses the action key
                 surrounding_blocks = self.make_surrounding_blocks(self.player.collision_rect)
                 blocks = pygame.sprite.Group()
-                blocks.add(surrounding_blocks[self.player.direction / 45], Block(self.player.collision_rect, BLACK))
+                blocks.add(surrounding_blocks[int(self.player.direction//45) - 1], Block(self.player.collision_rect, BLACK))
                 for door in pygame.sprite.groupcollide(self.doors, blocks, False, False):
                     if not door.locked:
                         if not door.is_open:
@@ -621,19 +643,45 @@ class GameScene(Scene):
         self.player.update_player(player.collision_rect, player.direction)
         self.teleportPlayerToTag(playerLocationTag)
         self.character_collision_boxes = [char.get_collision_box() for char in self.entities]
-        self.grid.update_grid(self.collidables + self.character_collision_boxes)
+        self.grid.update_grid(self.collidables)
         self.update_hearts(self.heartTexture)
         self.update_keys(self.keyTexture)
         # Manually unstun player and update speed in case player is already holding down movement keys
         self.player.stunned = False
         self.player.godMode = False
+        self.player.directionLock = False
         self.player.update_speed()
         self.cameraLeeway.center = self.player.collision_rect.center
 
     def load_level(self): # Don't mess with the player here, use set_player or teleportPlayerToTag
         for npc in self.npcs:
             npc.set_position(npc.startPoint)
+        # Manually unstun player and update speed in case player is already holding down movement keys
+        self.player.stunned = False
+        self.player.godMode = False
+        self.player.directionLock = False
+        self.player.update_speed()
+        self.cameraLeeway.center = self.player.collision_rect.center
+        self.nextSceneThread = threading.Thread(target=self.event_timers)
+        self.nextSceneThread.daemon = True
+        self.nextSceneThread.start()
 
+    def event_timers(self):
+        clock = pygame.time.Clock()
+        self.timerRunning = True
+        print "Running timer!"
+        print self.timers
+        while self.timerRunning:
+            time = clock.get_time()
+            for timer in self.timers:
+                if timer.rate <= 0:
+                    self.timers.remove(timer)
+                timer.time -= time
+                if timer.time <= 0:
+                    print "Event " + str(timer.event) + " !!!"
+                    pygame.event.post(pygame.event.Event(timer.event))
+                    timer.time += timer.rate
+            clock.tick(1000)
 
 
 class TitleScene(Scene):
@@ -680,8 +728,9 @@ class TitleScene(Scene):
         screen.blit(self.whiteScreen, (0, 0))
 
     def update(self, time):
-        self.textCoord = round(300 + sin(self.textLevel) * 10)
-        self.textLevel += (0.0005 * time)
+        self.textCoord = 300 + (sin(self.textLevel) * 10)
+        self.textLevel += (0.0005 * time) % 0.1
+        self.textLevel %= 6.28
         pass
 
     def handle_events(self, events):

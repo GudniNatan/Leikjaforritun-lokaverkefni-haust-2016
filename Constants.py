@@ -24,3 +24,5 @@ healthEvent = USEREVENT+7
 actionEvent = USEREVENT+8
 moveEvent = USEREVENT+9
 keyEvent = USEREVENT+10
+#There are many broken userevents
+bowmanShootEvent = USEREVENT+40

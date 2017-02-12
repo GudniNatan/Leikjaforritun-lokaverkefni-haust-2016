@@ -22,13 +22,14 @@ def main():
     except pygame.error as err:
         print("Error: " + str(err) + "; attempting to run anyway.")
         print("Please note that you may run into glitches and crashes while in this mode.")
-        
+
     manager = SceneManager(screen)
-    pygame.time.set_timer(pathfindingEvent, 300)
+    pygame.time.set_timer(pathfindingEvent, 150)
     pygame.time.set_timer(animationEvent, 42)  # approx 24 times per second
     running = True
     fpsAverage = list()
     sfont = pygame.font.SysFont('Consolas', 12)
+
 
     # Game loop
     while running:
@@ -48,7 +49,6 @@ def main():
         manager.scene.update(clock.get_time())
         clock.tick()
         #print(clock.get_fps())
-
     pygame.quit()
     sys.exit()
 

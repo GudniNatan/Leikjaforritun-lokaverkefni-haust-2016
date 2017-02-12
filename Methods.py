@@ -1,4 +1,5 @@
 import pygame
+import vec2d_jdm
 
 """ aspect_scale - Scaling surfaces keeping their aspect ratio
 Raiser, Frank - Sep 6, 2k++
@@ -48,3 +49,9 @@ def aspect_scale(img, (bx, by)):
             sy = by
 
     return pygame.transform.scale(img, (int(sx), int(sy)))
+
+
+def CreateVectorFromCoordinates((x1, y1), (x2, y2)):
+    x = x2 - x1
+    y = y2 - y1
+    return vec2d_jdm.Vec2D(x, y)
