@@ -244,6 +244,11 @@ class GameScene(Scene):
         # Game surface
         screen.fill(BLACK)
         self.gameSurface.blit(self.backgroundSurface, (0,0))
+        """for npc in self.npcs:
+            if type(npc) is Stalker:
+                for brick in npc.pathBricks:
+                    self.gameSurface.fill(BLACK, brick.rect)
+                    pass"""
         for box in self.character_collision_boxes:
             self.gameSurface.blit(self.shadow, box.rect.midleft)
         self.action_group.draw(self.gameSurface)
@@ -255,11 +260,6 @@ class GameScene(Scene):
             self.gameSurface.blit(self.swordsprite.image, self.swordsprite.rect)
         pygame.draw.rect(self.gameSurface, BLACK, pygame.Rect((0, 0), self.levelrect.size), 6)
         #self.gameSurface.fill(BLACK, self.player.collision_rect)
-        """for npc in self.npcs:
-            if type(npc) is Bowman:
-                for brick in npc.pathBricks:
-                    self.gameSurface.fill(BLACK, brick.rect)
-                    pass"""
 
         screen.blit(self.gameSurface.subsurface(self.camera), (self.offset.x, self.offset.y))
         #screen.blit(pygame.transform.scale(gameSurface, window_size), (0, 0))
@@ -689,6 +689,8 @@ class GameScene(Scene):
                                 print "SHOOT"
                         pass
                     timer.time += timer.rate
+                    if timer.time <= 0:
+                        timer.time = timer.rate
             clock.tick(1000)
         print "Timer ended!"
 
