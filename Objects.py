@@ -47,6 +47,12 @@ class SimpleRectSprite(pygame.sprite.DirtySprite):  # Molds sprite to rect, eith
     def move_to(self, (x, y)):
         self.move((x - self.rect.x, y - self.rect.y))
 
+    def rotate_90_degrees_N_times(self, n=1):
+        self.image = pygame.transform.rotate(self.image, 90 * n)
+        if n % 2 == 1:
+            self.rect.size = (self.rect.height, self.rect.width)
+
+
 
 class ConjoinedSpriteGroup(pygame.sprite.DirtySprite):
     def __init__(self, spriteGroup=pygame.sprite.Group()):
@@ -131,6 +137,18 @@ class Chest(SimpleRectSprite):
         self.surface =  pygame.transform.flip(self.surface, True, False)
         super(Chest, self).__init__(pygame.Rect(self.topleft[0], self.topleft[1], drawSize, drawSize), self.surface, True)
         self.opened = True
+
+class Arrow(SimpleRectSprite):
+    def __init__(self, direction, rect, surface, sender, speed=1, scale=True):
+        super(Arrow, self).__init__(rect, surface, scale)
+        self.direction = round(90 * round(float(direction)/90), 2)
+        self.rotate_90_degrees_N_times(self.direction / 90)
+        self.sender = sender
+        self.speed = speed
+
+    def update_position(self, time, sprites, collidables):
+        pass
+
 
 
 '''class Sword(pygame.sprite.Sprite):

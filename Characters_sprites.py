@@ -36,7 +36,7 @@ class Character(pygame.sprite.DirtySprite):
         self.next_location = self.collision_rect
         self.red_blink = False
 
-    def set_sprite_direction(self):
+    def set_sprite_direction(self, lock_on_to=None):
         vx = self.vx
         vy = self.vy
         if vx == 0 and vy == 0 and self.last_direction is not None:
@@ -52,8 +52,16 @@ class Character(pygame.sprite.DirtySprite):
                 self.moving = True
             self.update_sprite()
             return
-        direction = 180
-        direction += vec2d_jdm.Vec2D(vy, -vx).get_angle() # Please note the += 180, get angle will return negatives
+        if lock_on_to is None:
+            direction = 180
+            direction += vec2d_jdm.Vec2D(vy, -vx).get_angle() # Please note the += 180, get angle will return negatives
+        else:
+            try:
+                direction = 90 + CreateVectorFromCoordinates(self.collision_rect.center, lock_on_to.collision_rect.center).get_angle()
+            except Exception:
+                direction = 180
+                direction += vec2d_jdm.Vec2D(vy, -vx).get_angle()  # Please note the += 180, get angle will return negatives
+
         """if vx and vy:
             if vy < 0 and vx < 0:
                 direction = 315
@@ -345,7 +353,7 @@ class Bowman(NPC):
             self.vy = speed
         else:
             self.vy = 0
-        self.set_sprite_direction()
+        self.set_sprite_direction(self.player)
 
         if self.vx == self.vy == 0:
             self.path.pop(0)
@@ -355,8 +363,22 @@ class Bowman(NPC):
             return
         super(Bowman, self).update_position(time, collidables)
 
-    def findShootingSpot(self, grid):
+    def findShootingSpot(self, grid, range=5):  #Bowman will try to shoot from the given range. If the player closes in on him, he will try to run away.
         if max(self.gridPos[0], self.player.gridPos[0]) - min(self.gridPos[0], self.player.gridPos[0]) >= max(self.gridPos[1], self.player.gridPos[1]) - min(self.gridPos[1], self.player.gridPos[1]):
-            self.update_path(grid, self.gridPos, [self.gridPos[0], self.player.gridPos[1]])
+            if self.player.gridPos[0] < self.gridPos[0]:
+                self.update_path(grid, self.gridPos, [self.player.gridPos[0] + range, self.player.gridPos[1]])
+            else:
+                self.update_path(grid, self.gridPos, [self.player.gridPos[0] - range, self.player.gridPos[1]])
+            #self.update_path(grid, self.gridPos, [self.gridPos[0], self.player.gridPos[1]])
         else:
-            self.update_path(grid, self.gridPos, [self.player.gridPos[0], self.gridPos[1]])
+            if self.player.gridPos[1] < self.gridPos[1]:
+                self.update_path(grid, self.gridPos, [self.player.gridPos[0], self.player.gridPos[1] + range])
+            else:
+                self.update_path(grid, self.gridPos, [self.player.gridPos[0], self.player.gridPos[1] - range])
+            #self.update_path(grid, self.gridPos, [self.player.gridPos[0], self.gridPos[1]])
+        if self.path == []:
+            if CreateVectorFromCoordinates(self.gridPos, self.player.gridPos).length() < range:
+                self.update_path(grid, self.gridPos, [self.startPoint[0] / drawSize, self.startPoint[1] / drawSize])
+
+    def shoot(self):
+        pass

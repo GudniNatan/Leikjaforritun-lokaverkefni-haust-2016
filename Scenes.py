@@ -255,11 +255,11 @@ class GameScene(Scene):
             self.gameSurface.blit(self.swordsprite.image, self.swordsprite.rect)
         pygame.draw.rect(self.gameSurface, BLACK, pygame.Rect((0, 0), self.levelrect.size), 6)
         #self.gameSurface.fill(BLACK, self.player.collision_rect)
-        for npc in self.npcs:
+        """for npc in self.npcs:
             if type(npc) is Bowman:
                 for brick in npc.pathBricks:
                     self.gameSurface.fill(BLACK, brick.rect)
-                    pass
+                    pass"""
 
         screen.blit(self.gameSurface.subsurface(self.camera), (self.offset.x, self.offset.y))
         #screen.blit(pygame.transform.scale(gameSurface, window_size), (0, 0))
@@ -330,10 +330,14 @@ class GameScene(Scene):
     def handle_events(self, events):
         for event in events:
             if event.type == pygame.QUIT:
+                self.timerRunning = False
+                self.timerThread.join()
                 pygame.event.post(pygame.event.Event(QUIT))
             if event.type == pygame.KEYDOWN and event.key == pygame.K_p:
                 self.paused = not self.paused
             if event.type == KEYDOWN and event.key == K_ESCAPE:
+                self.timerRunning = False
+                self.timerThread.join()
                 self.manager.go_to(TitleScene())
             if self.paused:
                 continue
@@ -436,6 +440,8 @@ class GameScene(Scene):
                         if s.phase == 20:
                             #self.manager.go_to(GameScene(s.nextScene, self.player, pygame.Rect((300, 100), self.player.collision_rect.size)))
                             self.nextSceneThread.join()
+                            self.timerRunning = False
+                            self.timerThread.join()
                             self.manager.go_to(self.nextScene)
                             self.manager.scene.set_player(self.player, s.gotoWhere)
                             self.animations.remove(s)
@@ -511,14 +517,11 @@ class GameScene(Scene):
                     gamesurface = pygame.Surface(self.manager.screen.get_size())
                     gamesurface.fill(BLACK)
                     gamesurface.blit(self.gameSurface.subsurface(self.camera), (self.offset.x, self.offset.y))
+                    self.timerRunning = False
+                    self.timerThread.join()
                     self.manager.go_to(GameOverScene(gamesurface))
 
             if event.type == keyEvent:
-                print keyEvent
-                self.update_keys(self.keyTexture)
-
-            if event.type == bowmanShootEvent:
-                print "bowmanShootEvent"
                 self.update_keys(self.keyTexture)
 
             if event.type == actionEvent:  # When the player presses the action key
@@ -589,7 +592,7 @@ class GameScene(Scene):
     def make_surrounding_blocks(self, rect):
         boxes = list()
         for i in xrange(0, 360, 45):
-            block = pygame.Rect(0, 0, rect.w, rect.w)
+            block = pygame.Rect(0, 0, min(rect.w, rect.h), min(rect.w, rect.h))
             if i == 0 or i == 45 or i == 315:
                 block.bottom = rect.top
             elif i == 90 or i == 270:
@@ -665,16 +668,14 @@ class GameScene(Scene):
         self.player.directionLock = False
         self.player.update_speed()
         self.cameraLeeway.center = self.player.collision_rect.center
-        self.nextSceneThread = threading.Thread(target=self.event_timers)
-        self.nextSceneThread.daemon = True
-        self.nextSceneThread.start()
+        self.timerThread = threading.Thread(target=self.event_timers)
+        self.timerThread.daemon = True
+        self.timerThread.start()
 
     def event_timers(self):
-        return
         clock = pygame.time.Clock()
         self.timerRunning = True
         print "Running timer!"
-        print self.timers
         while self.timerRunning:
             time = clock.get_time()
             for timer in self.timers:
@@ -682,10 +683,14 @@ class GameScene(Scene):
                     self.timers.remove(timer)
                 timer.time -= time
                 if timer.time <= 0:
-                    print "Event " + str(timer.event) + " !!!"
-                    pygame.event.post(pygame.event.Event(timer.event))
+                    if timer.event == bowmanShootEvent:
+                        for npc in self.npcs:
+                            if type(npc) is Bowman:
+                                print "SHOOT"
+                        pass
                     timer.time += timer.rate
             clock.tick(1000)
+        print "Timer ended!"
 
 
 class TitleScene(Scene):
