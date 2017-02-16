@@ -244,11 +244,11 @@ class GameScene(Scene):
         # Game surface
         screen.fill(BLACK)
         self.gameSurface.blit(self.backgroundSurface, (0,0))
-        """for npc in self.npcs:
-            if type(npc) is Stalker:
+        for npc in self.npcs:
+            if type(npc) is Stalker or Bowman:
                 for brick in npc.pathBricks:
                     self.gameSurface.fill(BLACK, brick.rect)
-                    pass"""
+                    pass
         for box in self.character_collision_boxes:
             self.gameSurface.blit(self.shadow, box.rect.midleft)
         self.action_group.draw(self.gameSurface)
@@ -280,7 +280,7 @@ class GameScene(Scene):
         if self.paused:  # Don't update anything when paused, could add in any special exceptions here
             return
         # Update character positions, speed and layers
-        for sprite in self.entities.copy().sprites():
+        for sprite in self.entities.sprites():
             self.entities.change_layer(sprite, sprite.rect.centery)
         self.character_collision_boxes = [entity.get_collision_box() for entity in self.entities]
         for entity in self.entities:
@@ -611,14 +611,14 @@ class GameScene(Scene):
     def update_hearts(self, heartTexture):
         self.heartList = list()
         for i in xrange(self.player.maxHealth):
-            rect = pygame.Rect((window_width / 6) +(40 * i), 20, 7 * 4, 7 * 4) #Edit this to change heart locations
+            rect = pygame.Rect((window_width / 6) +(40 * i), 20, 7 * 4, 7 * 4)  # Edit this to change heart locations
             if self.player.health > i:
                 self.heartList.append(SimpleRectSprite(rect, heartTexture.subsurface(pygame.Rect(0,0,8,8)), True))
             else:
                 self.heartList.append(SimpleRectSprite(rect, heartTexture.subsurface(pygame.Rect(8*12, 0, 8, 8)), True))
         self.hearts = pygame.sprite.RenderUpdates(self.heartList)
 
-    def update_keys(self, keyTexture): #Edit this to change key icon locations
+    def update_keys(self, keyTexture):  # Edit this to change key icon locations
         self.keyList = list()
         for i in xrange(self.player.keys):
             rect = pygame.Rect((window_width / 2) + (40 * i), 20, 7 * 5, 7 * 5)

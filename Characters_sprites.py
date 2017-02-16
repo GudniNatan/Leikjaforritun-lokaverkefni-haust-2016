@@ -61,7 +61,7 @@ class Character(pygame.sprite.DirtySprite):
             except Exception:
                 direction = 180
                 direction += vec2d_jdm.Vec2D(vy, -vx).get_angle()  # Please note the += 180, get angle will return negatives
-        #direction = round(15 * round(float(direction)/15), 2)
+        direction = round(15 * round(float(round(direction + 1))/15), 2) % 360
 
         """if vx and vy:
             if vy < 0 and vx < 0:
@@ -147,7 +147,7 @@ class Character(pygame.sprite.DirtySprite):
                     (self.realX, self.realY) = self.next_location.topleft
                     print "Corrected next location"""
             self.going_to
-            if self.going_to.topleft != (0 ,0):
+            if self.going_to.topleft != (0, 0):
                 box = pygame.Rect(self.next_location)
                 box.center = self.going_to.center
                 if (self.realX > box.x and self.vx > 0) or (self.realX < box.x and self.vx < 0):
@@ -332,12 +332,11 @@ class Stalker(NPC):
         self.going_to = next_square_rect
         vector = CreateVectorFromCoordinates(self.collision_rect.center, next_square_rect.center)
         normalVector = vector.normal()
+        normalVector = vector.normal()
+        (self.vx, self.vy) = (normalVector.x * speed, normalVector.y * speed)
         #print abs(vec2d_jdm.Vec2D(self.vx, self.vy).get_angle_between(vector))
-        if abs(vec2d_jdm.Vec2D(self.vx, self.vy).get_angle_between(vector)) > 5 :
-            (self.vx, self.vy) = (normalVector.x * speed, normalVector.y * speed)
-        if self.vx == self.vy == 0 or vector.length() < 10 or next_square_rect.contains(self.collision_rect):
+        if self.vx == self.vy == 0 or vector.length() < 1:
             self.path.pop(0)
-            (self.vx, self.vy) = (normalVector.x * speed, normalVector.y * speed)
         self.set_sprite_direction()
 
     def update_position(self, time, collidables):
@@ -357,6 +356,7 @@ class Bowman(NPC):
         self.player = player
         self.readyToShoot = False
         self.going_to = pygame.Rect(0, 0, 0, 0)
+
     def update_speed(self):
         # Follows path
         path = self.path
@@ -370,13 +370,11 @@ class Bowman(NPC):
         next_square_rect = pygame.Rect(next_square[0] * drawSize, next_square[1] * drawSize, drawSize, drawSize)
         self.going_to = next_square_rect
         vector = CreateVectorFromCoordinates(self.collision_rect.center, next_square_rect.center)
-        if abs(vec2d_jdm.Vec2D(self.vx, self.vy).get_angle_between(vector)) > 5 :
-            normalVector = vector.normal()
-            (self.vx, self.vy) = (normalVector.x * speed, normalVector.y * speed)
-        if self.vx == self.vy == 0 or vector.length() < 10 or next_square_rect.contains(self.collision_rect):
+        normalVector = vector.normal()
+        (self.vx, self.vy) = (normalVector.x * speed, normalVector.y * speed)
+        if self.vx == self.vy == 0 or vector.length() < 1:
+            self.vx, self.vy = 0, 0
             self.path.pop(0)
-            normalVector = vector.normal()
-            (self.vx, self.vy) = (normalVector.x * speed, normalVector.y * speed)
         self.set_sprite_direction(self.player)
 
     def update_position(self, time, collidables):

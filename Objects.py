@@ -2,6 +2,7 @@ import pygame
 from Constants import *
 from pygame.locals import *
 
+
 class Brick(object):
     def __init__(self, x, y, size):
         self.rect = pygame.Rect(x, y, size, size)
