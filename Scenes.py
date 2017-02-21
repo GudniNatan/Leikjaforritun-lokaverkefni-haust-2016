@@ -69,12 +69,13 @@ class GameScene(Scene):
         self.nextSceneThread = None
         self.roomNumber = room
         lineLength = len(max(lines, key=len))
-        charset = pygame.image.load(os.path.join('images', 'charset2.png')).convert_alpha()
+        charset = pygame.image.load(os.path.join('images', 'charset3.png')).convert_alpha()
         shadow = pygame.image.load(os.path.join('images', 'shadow.png')).convert_alpha()
         walls = pygame.image.load(os.path.join('images', 'veggur2.png')).convert_alpha()
         heart = pygame.image.load(os.path.join('images', 'hearts.png')).convert_alpha()
         floor_tile = pygame.image.load(os.path.join('images', 'floor.png')).convert_alpha()
         door = pygame.image.load(os.path.join('images', 'hurd2.png')).convert_alpha()
+        self.arrowSprite = pygame.image.load(os.path.join('images', 'arrow.png')).convert_alpha()
         self.sword_texture = aspect_scale(pygame.image.load(os.path.join('images', 'swords3.png')).convert_alpha(), (100000, drawSize))
         self.sword_icon = pygame.image.load(os.path.join('images', 'sword icon.png')).convert_alpha()
         self.keyTexture = pygame.image.load(os.path.join('images', 'Small_Key_MC.gif')).convert_alpha()
@@ -238,6 +239,7 @@ class GameScene(Scene):
         if self.levelrect.h < window_height:
             self.offset.y = (window_height - self.levelrect.h) / 2
         self.cameraLeeway.center = self.player.collision_rect.center
+        self.arrows = pygame.sprite.RenderUpdates()
 
 
     def render(self, screen):
@@ -475,7 +477,7 @@ class GameScene(Scene):
                     if char.stunned:
                         if not char.red_blink:
                             pixels = pygame.PixelArray(char.image)
-                            pixels.replace(BLACK, RED, 0.9)
+                            pixels.replace(WHITE, RED, 0.9)
                             char.image = pixels.surface
                             char.red_blink = True
                         else:
@@ -687,6 +689,7 @@ class GameScene(Scene):
                         for npc in self.npcs:
                             if type(npc) is Bowman:
                                 print "SHOOT"
+
                         pass
                     timer.time += timer.rate
                     if timer.time <= 0:

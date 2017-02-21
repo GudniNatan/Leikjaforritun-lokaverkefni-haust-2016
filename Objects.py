@@ -1,6 +1,7 @@
 import pygame
 from Constants import *
 from pygame.locals import *
+#from Characters_sprites import Character
 
 
 class Brick(object):
@@ -65,30 +66,16 @@ class ConjoinedSpriteGroup(pygame.sprite.DirtySprite):
             self.image.blit(sprite.image, (sprite.rect.x - self.rect.x, sprite.rect.y - self.rect.y))
 
 
-class ActionObject(pygame.sprite.DirtySprite):
-    def __init__(self, spriteGroup=pygame.sprite.Group()):
-        super(ActionObject, self).__init__()
-        self.spriteGroup = spriteGroup
-        rects = [sprite.rect for sprite in self.spriteGroup]
-        self.rect = rects[0].unionall(rects)
-        self.image = pygame.Surface(self.rect.size)
-        for sprite in self.spriteGroup:
-            self.image.blit(sprite.image, (sprite.rect.x - self.rect.x, sprite.rect.y - self.rect.y))
+class ActionObject(SimpleRectSprite):
+    def __init__(self, rect, surface, scale=True):
+        super(ActionObject, self).__init__(rect, surface, scale)
 
     def move(self, (x, y)):
-        for sprite in self.spriteGroup:
-            sprite.rect.x += x
-            sprite.rect.y += y
         self.rect.x += x
         self.rect.y += y
 
     def move_to(self, (x, y)):
         self.move((x - self.rect.x, y - self.rect.y))
-
-    def kill(self):
-        for sprite in self.spriteGroup:
-            sprite.kill()
-        super(ActionObject, self).kill()
 
 class Door(SimpleRectSprite):
     def __init__(self, rect, surface, rotation, parent_surface, locked=False, is_open=False, scale=False):
@@ -148,7 +135,58 @@ class Arrow(SimpleRectSprite):
         self.speed = speed
 
     def update_position(self, time, sprites, collidables):
-        pass
+        if self.vx == 0 and self.vy == 0:
+            return
+        if time == 0:
+            pygame.time.wait(1)
+            time = 1
+        original_x = self.realX
+        original_y = self.realY
+        pixellimit = drawSize / 4  # should not ever be higher than drawsize / 2
+        if -pixellimit < self.vx * time < pixellimit:
+            self.realX += self.vx * time
+        elif self.vx < 0:
+            self.realX -= pixellimit
+        else:
+            self.realX += pixellimit
+        if -pixellimit < self.vy * time < pixellimit:
+            self.realY += self.vy * time
+        elif self.vy < 0:
+            self.realY -= pixellimit
+        else:
+            self.realY += pixellimit
+        rect = self.collision_rect
+        next_location = pygame.Rect(int(self.realX), int(self.realY), rect.w, rect.h)
+        self.next_location = next_location
+
+        for object in collidables:
+            if object.rect.colliderect(next_location):
+                if object == self.collision_rect:
+                    continue
+
+                if isinstance(object) is Character:
+                    #Hit character
+                    pass
+                # Flats, reverse velocity based on side hit of collidable
+                if self.vx > 0 and object.rect.colliderect(
+                        pygame.Rect(next_location.left + next_location.w, rect.top, 0, next_location.h)):  # Left
+                    self.realX = object.rect.left - next_location.w
+                elif self.vx < 0 and object.rect.colliderect(
+                        pygame.Rect(next_location.right - next_location.w, rect.top, 0, next_location.h)):  # right
+                    self.realX = object.rect.right
+                if self.vy > 0 and object.rect.colliderect(
+                        pygame.Rect(rect.left, next_location.top + next_location.h, next_location.w, 0)):  # top
+                    self.realY = object.rect.top - next_location.h
+                elif self.vy < 0 and object.rect.colliderect(
+                        pygame.Rect(rect.left, next_location.bottom - next_location.h, next_location.w, 0)):  # bottom
+                    self.realY = object.rect.bottom
+
+                if object.rect.collidepoint(rect.center):   # Moves you out if fully inside a collidable object
+                    (self.realX, self.realY) = self.startPoint
+        rect.x = self.realX
+        rect.y = self.realY
+        self.gridPos = [self.collision_rect.centerx / drawSize, self.collision_rect.centery / drawSize]
+        self.rect.midbottom = (rect.centerx, rect.bottom - 1)
 
 
 
