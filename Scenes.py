@@ -26,10 +26,11 @@ class SceneManager(object):
             except IndexError:
                 self.scene = scene
                 print("Creating scene")
+            self.scene.manager = self
             self.scene.load_level()
         else:
             self.scene = scene
-        self.scene.manager = self
+            self.scene.manager = self
 
     def generate_rooms(self):  # Idea is to process everything at once so we can switch between rooms with ease.
         self.room = list()
@@ -227,11 +228,13 @@ class GameScene(Scene):
         """self.backgroundFill = pygame.Surface((window_size))
         self.backgroundFill.fill(BLACK)
         self.gameSurface.blit(self.backgroundFill, self.camera)"""
-        self.backgroundSurface = self.gameSurface.copy()
-        self.backgroundSurface.fill(BLACK)
+        backgroundSurface = self.gameSurface.copy()
+        backgroundSurface.fill(BLACK)
 
-        self.block_group.draw(self.backgroundSurface)
-        self.background_group.draw(self.backgroundSurface)
+        self.block_group.draw(backgroundSurface)
+        self.background_group.draw(backgroundSurface)
+        backgroundSprite = SimpleSprite((0, 0), backgroundSurface)
+        self.background = pygame.sprite.RenderUpdates(backgroundSprite,)
         self.windowRect = pygame.Rect((0, 0), window_size)
         self.offset = pygame.Rect(0, 0, 0, 0)
         if self.levelrect.w < window_width:
@@ -241,11 +244,10 @@ class GameScene(Scene):
         self.cameraLeeway.center = self.player.collision_rect.center
         self.arrows = pygame.sprite.RenderUpdates()
 
-
     def render(self, screen):
         # Game surface
         screen.fill(BLACK)
-        self.gameSurface.blit(self.backgroundSurface, (0,0))
+        self.background.draw(self.gameSurface)
         """for npc in self.npcs:
             if type(npc) is Stalker or Bowman:
                 for brick in npc.pathBricks:
@@ -293,6 +295,7 @@ class GameScene(Scene):
             if not self.collidables[x].alive():
                 self.collidables.pop(x)
         # Update camera
+        camera = self.camera
         if self.player.collision_rect.left <= self.cameraLeeway.left and self.player.vx < 0:
             self.cameraLeeway.left = self.player.collision_rect.left
         elif self.player.collision_rect.right >= self.cameraLeeway.right and self.player.vx > 0:
@@ -302,16 +305,16 @@ class GameScene(Scene):
         if self.player.collision_rect.bottom >= self.cameraLeeway.bottom and self.player.vy > 0:
             self.cameraLeeway.bottom = self.player.collision_rect.bottom
 
-        self.camera.center = self.cameraLeeway.center  # Camera follows the camera leeway rect
+        camera.center = self.cameraLeeway.center  # Camera follows the camera leeway rect
 
-        if self.camera.x < 0:   # Make sure camera does not leave the game area
-            self.camera.x = 0
-        elif self.camera.right > self.gameSurface.get_width():
-            self.camera.right = self.gameSurface.get_width()
-        if self.camera.y < 0:
-            self.camera.y = 0
-        elif self.camera.bottom > self.gameSurface.get_height():
-            self.camera.bottom = self.gameSurface.get_height()
+        if camera.x < 0:   # Make sure camera does not leave the game area
+            camera.x = 0
+        elif camera.right > self.gameSurface.get_width():
+            camera.right = self.gameSurface.get_width()
+        if camera.y < 0:
+            camera.y = 0
+        elif camera.bottom > self.gameSurface.get_height():
+            camera.bottom = self.gameSurface.get_height()
 
         # Handle location triggers
         for trigger in self.triggers:
@@ -342,13 +345,13 @@ class GameScene(Scene):
                 self.manager.go_to(TitleScene())
             if self.paused:
                 continue
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_z:
+            if (event.type == pygame.KEYDOWN and event.key == pygame.K_z) or (event.type == JOYBUTTONDOWN and event.button == 0):
                 if Animation("sword") not in self.animations:
                     params = {'sprite': self.sword_texture, 'phase': 0}
                     self.animations.append(Animation("sword", params))
             if event.type == pygame.KEYDOWN and event.key == pygame.K_x:
                 pygame.event.post(pygame.event.Event(genericEvent, code='actionEvent',))
-            if event.type == pygame.KEYDOWN or event.type == pygame.KEYUP:
+            if event.type == pygame.KEYDOWN or event.type == pygame.KEYUP or event.type == JOYAXISMOTION or event.type == JOYHATMOTION:
                 self.player.update_speed()
             if event.type == pathfindingEvent:
                 for char in self.npcs:
@@ -679,6 +682,7 @@ class GameScene(Scene):
         self.timerThread.start()
 
     def event_timers(self):
+        return
         clock = pygame.time.Clock()
         self.timerRunning = True
         print "Running timer!"
@@ -755,7 +759,7 @@ class TitleScene(Scene):
         for event in events:
             if event.type == pygame.QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
                 pygame.event.post(pygame.event.Event(QUIT))
-            if event.type == KEYDOWN and event.key == K_SPACE:
+            if (event.type == KEYDOWN and event.key == K_SPACE) or (event.type == JOYBUTTONDOWN and event.button == 0):
                 params = {'phase': 0, 'opacity': 0}
                 self.animations.append(Animation("StartGame", params))
             if event.type == animationEvent:
@@ -768,7 +772,7 @@ class TitleScene(Scene):
                             self.whiteScreen.set_alpha(255)
                         if s.phase == 20:
                             self.manager.generate_rooms()
-                            self.manager.go_to(GameScene(0))
+                            self.manager.go_to(GameScene(startLevel))
                         s.opacity += 12
                         self.whiteScreen.set_alpha(s.opacity)
                         s.phase += 1

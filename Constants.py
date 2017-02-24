@@ -13,6 +13,8 @@ drawSize = 40
 halfDrawSize = drawSize / 2
 window_size = window_width, window_height = 1280, 720   # Would like to make window size dynamic
 
+startLevel = 3
+
 #Custom Events
 pathfindingEvent = USEREVENT+1
 updateGridEvent = USEREVENT+2

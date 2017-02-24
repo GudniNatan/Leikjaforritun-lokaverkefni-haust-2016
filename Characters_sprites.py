@@ -102,13 +102,13 @@ class Character(pygame.sprite.DirtySprite):
             phase = 1
 
         if 45 > (direction % 360) or (direction % 360) >= 315:
-            sprite = self.charset.subsurface(pygame.Rect(phase * width, height * 0, width-1, height))
+            sprite = self.charset.subsurface(Rect(phase * width, height * 0, width-1, height))
         elif 45 <= (direction % 360) < 135:
-            sprite = self.charset.subsurface(pygame.Rect(phase * width, height * 1, width-1, height))
+            sprite = self.charset.subsurface(Rect(phase * width, height * 1, width-1, height))
         elif 135 <= (direction % 360) < 225:
-            sprite = self.charset.subsurface(pygame.Rect(phase * width, height * 2, width-1, height))
+            sprite = self.charset.subsurface(Rect(phase * width, height * 2, width-1, height))
         elif 225 <= (direction % 360) < 315:
-            sprite = self.charset.subsurface(pygame.Rect(phase * width, height * 3, width-1, height))
+            sprite = self.charset.subsurface(Rect(phase * width, height * 3, width-1, height))
         #sprite = pygame.transform.scale(sprite, (sprite.get_rect().w * 24 / height, sprite.get_rect().h * 24 / height)
         sprite = aspect_scale(sprite, (desired_width, 100))
         self.image = sprite
@@ -138,17 +138,11 @@ class Character(pygame.sprite.DirtySprite):
         else:
             self.realY += pixellimit
         rect = self.collision_rect
-        next_location = pygame.Rect(int(self.realX), int(self.realY), rect.w, rect.h)
+        next_location = Rect(int(self.realX), int(self.realY), rect.w, rect.h)
         self.next_location = next_location
         try:
-            """if self.going_to.topleft != (0, 0) and abs(vec2d_jdm.Vec2D(self.vx * time, self.vy * time).length()) > 1:
-                if abs(CreateVectorFromCoordinates(self.collision_rect.center, self.next_location.center).length()) > abs(CreateVectorFromCoordinates(self.collision_rect.center, self.going_to.center).length()):
-                    self.next_location.center = self.going_to.center
-                    (self.realX, self.realY) = self.next_location.topleft
-                    print "Corrected next location"""
-            self.going_to
             if self.going_to.topleft != (0, 0):
-                box = pygame.Rect(self.next_location)
+                box = Rect(self.next_location)
                 box.center = self.going_to.center
                 if (self.realX > box.x and self.vx > 0) or (self.realX < box.x and self.vx < 0):
                     next_location.x = box.x
@@ -160,23 +154,26 @@ class Character(pygame.sprite.DirtySprite):
                     pass
         except AttributeError:
             pass
-
+        vx = self.vx
+        vy = self.vy
         for object in collidables:
-            if object.rect.colliderect(next_location):
+            collideRect = object.rect.colliderect
+            if collideRect(next_location):
                 if object == self.collision_rect:
                     continue
+
                 # Flats
-                if self.vx > 0 and object.rect.colliderect(
-                        pygame.Rect(next_location.left + next_location.w, rect.top, 0, next_location.h)):  # Left
+                if vx > 0 and collideRect(
+                        Rect(next_location.left + next_location.w, rect.top, 0, next_location.h)):  # Left
                     self.realX = object.rect.left - next_location.w
-                elif self.vx < 0 and object.rect.colliderect(
-                        pygame.Rect(next_location.right - next_location.w, rect.top, 0, next_location.h)):  # right
+                elif vx < 0 and collideRect(
+                        Rect(next_location.right - next_location.w, rect.top, 0, next_location.h)):  # right
                     self.realX = object.rect.right
-                if self.vy > 0 and object.rect.colliderect(
-                        pygame.Rect(rect.left, next_location.top + next_location.h, next_location.w, 0)):  # top
+                if vy > 0 and collideRect(
+                        Rect(rect.left, next_location.top + next_location.h, next_location.w, 0)):  # top
                     self.realY = object.rect.top - next_location.h
-                elif self.vy < 0 and object.rect.colliderect(
-                        pygame.Rect(rect.left, next_location.bottom - next_location.h, next_location.w, 0)):  # bottom
+                elif vy < 0 and collideRect(
+                        Rect(rect.left, next_location.bottom - next_location.h, next_location.w, 0)):  # bottom
                     self.realY = object.rect.bottom
                 # Corners, might not actually be needed
                 """if object.rect.collidepoint(rect.topleft[0] + 0.1, rect.topleft[1] + 0.1):
@@ -233,13 +230,18 @@ class Player(Character):
         speed = self.baseSpeed
         if not (keys[K_UP] or keys[K_DOWN] or keys[K_RIGHT] or keys[K_LEFT]):
             if pygame.joystick.get_count():
-                joystick = pygame.joystick.Joystick(0)
-                self.vx = joystick.get_axis(0)
-                self.vy = joystick.get_axis(1)
-                if self.vx > -0.01 and self.vx < 0.01:
-                    self.vx = 0
-                if self.vy > -0.01 and self.vy < 0.01:
-                    self.vy = 0
+                js = pygame.joystick.Joystick(0)
+                if js.get_numhats():
+                    hat = js.get_hat(0)
+                    self.vx = hat[0] * speed
+                    self.vy = hat[1] * -speed
+                if self.vx == self.vy == 0:
+                    self.vx = js.get_axis(0) * speed
+                    self.vy = js.get_axis(1) * speed
+                    if self.vx > -0.02 and self.vx < 0.02:
+                        self.vx = 0
+                    if self.vy > -0.02 and self.vy < 0.02:
+                        self.vy = 0
             else:
                 self.vy = 0
                 self.vx = 0
@@ -313,7 +315,7 @@ class Stalker(NPC):
         self.baseSpeed = self.baseSpeed * 0.6
         self.followPlayer = True
         self.player = player
-        self.going_to = pygame.Rect(0, 0, 0, 0)
+        self.going_to = Rect(0, 0, 0, 0)
 
     def update_speed(self):
         # Follows path
@@ -321,7 +323,7 @@ class Stalker(NPC):
         if path is None or not path:
             self.vx = 0
             self.vy = 0
-            self.going_to = pygame.Rect(0, 0, 0, 0)
+            self.going_to = Rect(0, 0, 0, 0)
             return
         speed = self.baseSpeed
         rect = self.collision_rect
@@ -338,7 +340,7 @@ class Stalker(NPC):
             self.vy = speed
         else:
             self.vy = 0"""
-        next_square_rect = pygame.Rect(next_square[0] * drawSize, next_square[1] * drawSize, drawSize, drawSize)
+        next_square_rect = Rect(next_square[0] * drawSize, next_square[1] * drawSize, drawSize, drawSize)
         self.going_to = next_square_rect
         vector = CreateVectorFromCoordinates(self.collision_rect.center, next_square_rect.center)
         normalVector = vector.normal()
@@ -363,7 +365,7 @@ class Bowman(NPC):
         self.baseSpeed *= 0.6
         self.player = player
         self.readyToShoot = False
-        self.going_to = pygame.Rect(0, 0, 0, 0)
+        self.going_to = Rect(0, 0, 0, 0)
 
     def update_speed(self):
         # Follows path
@@ -371,15 +373,16 @@ class Bowman(NPC):
         if path is None or not path:
             self.vx = 0
             self.vy = 0
-            self.going_to = pygame.Rect(0, 0, 0, 0)
+            self.going_to = Rect(0, 0, 0, 0)
             return
         speed = self.baseSpeed
         next_square = path[0].value
-        next_square_rect = pygame.Rect(next_square[0] * drawSize, next_square[1] * drawSize, drawSize, drawSize)
-        self.going_to = next_square_rect
+        next_square_rect = Rect(next_square[0] * drawSize, next_square[1] * drawSize, drawSize, drawSize)
         vector = CreateVectorFromCoordinates(self.collision_rect.center, next_square_rect.center)
-        normalVector = vector.normal()
-        (self.vx, self.vy) = (normalVector.x * speed, normalVector.y * speed)
+        if self.going_to != next_square_rect:
+            self.going_to = next_square_rect
+            normalVector = vector.normal()
+            (self.vx, self.vy) = (normalVector.x * speed, normalVector.y * speed)
         if self.vx == self.vy == 0 or vector.length() < 1:
             self.vx, self.vy = 0, 0
             self.path.pop(0)
@@ -391,21 +394,23 @@ class Bowman(NPC):
         super(Bowman, self).update_position(time, collidables)
 
     def findShootingSpot(self, grid, range=5):  #Bowman will try to shoot from the given range. If the player closes in on him, he will try to run away.
-        if max(self.gridPos[0], self.player.gridPos[0]) - min(self.gridPos[0], self.player.gridPos[0]) >= max(self.gridPos[1], self.player.gridPos[1]) - min(self.gridPos[1], self.player.gridPos[1]):
-            if self.player.gridPos[0] < self.gridPos[0]:
-                self.update_path(grid, self.gridPos, [self.player.gridPos[0] + range, self.player.gridPos[1]])
+        sgp = self.gridPos
+        pgp = self.player.gridPos
+        if max(sgp[0], pgp[0]) - min(sgp[0], pgp[0]) >= max(sgp[1], pgp[1]) - min(sgp[1], pgp[1]):
+            if pgp[0] < sgp[0]:
+                self.update_path(grid, sgp, [pgp[0] + range, pgp[1]])
             else:
-                self.update_path(grid, self.gridPos, [self.player.gridPos[0] - range, self.player.gridPos[1]])
+                self.update_path(grid, sgp, [pgp[0] - range, pgp[1]])
             #self.update_path(grid, self.gridPos, [self.gridPos[0], self.player.gridPos[1]])
         else:
-            if self.player.gridPos[1] < self.gridPos[1]:
-                self.update_path(grid, self.gridPos, [self.player.gridPos[0], self.player.gridPos[1] + range])
+            if pgp[1] < sgp[1]:
+                self.update_path(grid, sgp, [pgp[0], pgp[1] + range])
             else:
-                self.update_path(grid, self.gridPos, [self.player.gridPos[0], self.player.gridPos[1] - range])
+                self.update_path(grid, sgp, [pgp[0], pgp[1] - range])
             #self.update_path(grid, self.gridPos, [self.player.gridPos[0], self.gridPos[1]])
         if self.path == []:
-            if CreateVectorFromCoordinates(self.gridPos, self.player.gridPos).length() < range:
-                self.update_path(grid, self.gridPos, [self.startPoint[0] / drawSize, self.startPoint[1] / drawSize])
+            if CreateVectorFromCoordinates(sgp, pgp).length() < range:
+                self.update_path(grid, sgp, [self.startPoint[0] / drawSize, self.startPoint[1] / drawSize])
 
     def shoot(self):
         pass

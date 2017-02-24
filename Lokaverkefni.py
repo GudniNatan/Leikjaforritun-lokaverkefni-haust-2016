@@ -9,7 +9,10 @@ from Scenes import *
 def main():
     # Pygame stuff
     pygame.init()
+    print pygame.version.ver
     pygame.joystick.init()
+    if pygame.joystick.get_count():
+        pygame.joystick.Joystick(0).init()
     screen = pygame.display.set_mode(window_size, pygame.DOUBLEBUF)
     clock = pygame.time.Clock()
     pygame.display.set_caption('FOR3L3DU')
@@ -42,13 +45,12 @@ def main():
             fpsAverage.pop(0)
         text2 = sfont.render("avg:" + str(reduce(lambda x, y: x + y, fpsAverage) / len(fpsAverage)), False, WHITE)
         screen.blit(text2, (0, 13))
-        pygame.display.update()
         manager.scene.handle_events(pygame.event.get())
         manager.scene.update(clock.get_time())
+        pygame.display.update()
         clock.tick()
         #print(clock.get_fps())
     pygame.quit()
-    sys.exit()
 
 if __name__ == '__main__':
     main()
