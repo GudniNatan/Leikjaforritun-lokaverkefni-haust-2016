@@ -214,8 +214,9 @@ class Character(pygame.sprite.DirtySprite):
             pass
         self.stunned = True
         self.health -= damage
-        pygame.event.post(pygame.event.Event(healthEvent))
-        pygame.time.set_timer(unstunEvent, 500)
+        pygame.event.post(pygame.event.Event(genericEvent, code='healthEvent', ))
+        pygame.event.post(pygame.event.Event(delayedGenericEvent, code='unstunEvent', delay=500, entity=self,))
+        #pygame.time.set_timer(unstunEvent, 500)
 
 
 class Player(Character):
@@ -231,8 +232,17 @@ class Player(Character):
         keys = pygame.key.get_pressed()
         speed = self.baseSpeed
         if not (keys[K_UP] or keys[K_DOWN] or keys[K_RIGHT] or keys[K_LEFT]):
-            self.vy = 0
-            self.vx = 0
+            if pygame.joystick.get_count():
+                joystick = pygame.joystick.Joystick(0)
+                self.vx = joystick.get_axis(0)
+                self.vy = joystick.get_axis(1)
+                if self.vx > -0.01 and self.vx < 0.01:
+                    self.vx = 0
+                if self.vy > -0.01 and self.vy < 0.01:
+                    self.vy = 0
+            else:
+                self.vy = 0
+                self.vx = 0
         else:
             if keys[K_UP]:
                 self.vy = -speed
@@ -332,10 +342,8 @@ class Stalker(NPC):
         self.going_to = next_square_rect
         vector = CreateVectorFromCoordinates(self.collision_rect.center, next_square_rect.center)
         normalVector = vector.normal()
-        normalVector = vector.normal()
         (self.vx, self.vy) = (normalVector.x * speed, normalVector.y * speed)
-        #print abs(vec2d_jdm.Vec2D(self.vx, self.vy).get_angle_between(vector))
-        if self.vx == self.vy == 0 or vector.length() < 1:
+        if self.vx == self.vy == 0:
             self.path.pop(0)
         self.set_sprite_direction()
 

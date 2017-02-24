@@ -9,6 +9,7 @@ from Scenes import *
 def main():
     # Pygame stuff
     pygame.init()
+    pygame.joystick.init()
     screen = pygame.display.set_mode(window_size, pygame.DOUBLEBUF)
     clock = pygame.time.Clock()
     pygame.display.set_caption('FOR3L3DU')

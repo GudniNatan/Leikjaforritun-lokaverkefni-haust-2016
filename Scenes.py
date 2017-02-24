@@ -246,11 +246,11 @@ class GameScene(Scene):
         # Game surface
         screen.fill(BLACK)
         self.gameSurface.blit(self.backgroundSurface, (0,0))
-        for npc in self.npcs:
+        """for npc in self.npcs:
             if type(npc) is Stalker or Bowman:
                 for brick in npc.pathBricks:
                     self.gameSurface.fill(BLACK, brick.rect)
-                    pass
+                    pass"""
         for box in self.character_collision_boxes:
             self.gameSurface.blit(self.shadow, box.rect.midleft)
         self.action_group.draw(self.gameSurface)
@@ -328,7 +328,6 @@ class GameScene(Scene):
             #Trigger types needed:
                 #Enemy death trigger
                 #
-
     def handle_events(self, events):
         for event in events:
             if event.type == pygame.QUIT:
@@ -348,7 +347,7 @@ class GameScene(Scene):
                     params = {'sprite': self.sword_texture, 'phase': 0}
                     self.animations.append(Animation("sword", params))
             if event.type == pygame.KEYDOWN and event.key == pygame.K_x:
-                pygame.event.post(pygame.event.Event(actionEvent))
+                pygame.event.post(pygame.event.Event(genericEvent, code='actionEvent',))
             if event.type == pygame.KEYDOWN or event.type == pygame.KEYUP:
                 self.player.update_speed()
             if event.type == pathfindingEvent:
@@ -374,7 +373,7 @@ class GameScene(Scene):
                             continue
                         if s.phase < 7:
                             if s.phase == 3:
-                                pygame.event.post(pygame.event.Event(swordSwingEvent))
+                                pygame.event.post(pygame.event.Event(genericEvent, code='swordSwingEvent',))
                             if s.phase < 2:
                                 self.swordsprite.image = s.sprite.subsurface(pygame.Rect(0, 0, self.sword_texture.get_width() / 5, self.sword_texture.get_height()))
                             else:
@@ -404,7 +403,7 @@ class GameScene(Scene):
                     if s.name == "health":
                         if s.phase >= 13:
                             self.animations.remove(s)
-                            pygame.event.post(pygame.event.Event(healthEvent))
+                            pygame.event.post(pygame.event.Event(genericEvent, code='healthEvent',))
                             continue
                         s.sprite.image = SimpleRectSprite(pygame.Rect(s.sprite.rect), self.heartTexture.subsurface(pygame.Rect((s.phase) * 8, 0, 8, 8)), True).image
                         s.phase += 1
@@ -487,59 +486,64 @@ class GameScene(Scene):
                         char.red_blink = False
                         char.update_sprite()
 
-            if event.type == swordSwingEvent:
-                boxes = self.make_surrounding_blocks(self.player.collision_rect)
-                blocks = pygame.sprite.Group()
-                blocks.add(boxes[int(self.player.direction//45) % 8])
-                # blocks.add(boxes[((self.player.direction/45) + 1) % 8])
-                for sprite in pygame.sprite.groupcollide(self.npcs, blocks, False, False):
-                    sprite.hit()
+            if event.type == genericEvent:
+                if event.code == "swordSwingEvent":
+                    boxes = self.make_surrounding_blocks(self.player.collision_rect)
+                    blocks = pygame.sprite.Group()
+                    blocks.add(boxes[int(self.player.direction//45) % 8])
+                    # blocks.add(boxes[((self.player.direction/45) + 1) % 8])
+                    for sprite in pygame.sprite.groupcollide(self.npcs, blocks, False, False):
+                        sprite.hit()
 
-            if event.type == unstunEvent:
-                for entity in self.entities:
-                    if entity.stunned:
-                        entity.stunned = False
-                    if entity.health <= 0:
+                if event.code == "healthEvent":
+                    if self.player.health > self.player.maxHealth:
+                        self.player.health = self.player.maxHealth - 1
+                        self.player.displayHealth = self.player.maxHealth
+                    if self.player.displayHealth != self.player.health and self.player.health >= 0:
+                        params = {'sprite': self.heartList[self.player.displayHealth-1],
+                                  'jumpdistance': 8, 'phase': 0, }
+                        self.animations.append(Animation("health", params))
+                        self.player.displayHealth -= 1
+                    elif self.player.health <= 0:
+                        gamesurface = pygame.Surface(self.manager.screen.get_size())
+                        gamesurface.fill(BLACK)
+                        gamesurface.blit(self.gameSurface.subsurface(self.camera), (self.offset.x, self.offset.y))
+                        self.timerRunning = False
+                        self.timerThread.join()
+                        self.manager.go_to(GameOverScene(gamesurface))
+
+                if event.code == "keyEvent":
+                    self.update_keys(self.keyTexture)
+
+                if event.code == "actionEvent":  # When the player presses the action key
+                    surrounding_blocks = self.make_surrounding_blocks(self.player.collision_rect)
+                    blocks = pygame.sprite.Group()
+                    blocks.add(surrounding_blocks[int(self.player.direction//45) - 1], Block(self.player.collision_rect, BLACK))
+                    for door in pygame.sprite.groupcollide(self.doors, blocks, False, False):
+                        if not door.locked:
+                            if not door.is_open:
+                                params = {'door': door, 'phase': 0, 'startRect': copy.copy(door.rect)}
+                                self.animations.append(Animation("openDoor", params))
+                        elif self.player.keys > 0:
+                            self.player.keys -= 1
+                            door.unlock()
+                            pygame.event.post(pygame.event.Event(genericEvent, code='keyEvent',))
+                if event.code == "unstunEvent":
+                    if event.entity.stunned:
+                        event.entity.stunned = False
+                    if event.entity.health <= 0:
                         try:
-                            entity.kill()
+                            event.entity.kill()
                         except ValueError:
-                            pass
-                        entity = None
+                            event.entity = None
+            if event.type == delayedGenericEvent:
+                self.timerThread = threading.Thread(target=self.delayedEventHandling, args=(event,))
+                self.timerThread.daemon = True
+                self.timerThread.start()
 
-            if event.type == healthEvent:
-                if self.player.health > self.player.maxHealth:
-                    self.player.health = self.player.maxHealth - 1
-                    self.player.displayHealth = self.player.maxHealth
-                if self.player.displayHealth != self.player.health and self.player.health >= 0:
-                    params = {'sprite': self.heartList[self.player.displayHealth-1],
-                              'jumpdistance': 8, 'phase': 0, }
-                    self.animations.append(Animation("health", params))
-                    self.player.displayHealth -= 1
-                elif self.player.health <= 0:
-                    gamesurface = pygame.Surface(self.manager.screen.get_size())
-                    gamesurface.fill(BLACK)
-                    gamesurface.blit(self.gameSurface.subsurface(self.camera), (self.offset.x, self.offset.y))
-                    self.timerRunning = False
-                    self.timerThread.join()
-                    self.manager.go_to(GameOverScene(gamesurface))
-
-            if event.type == keyEvent:
-                self.update_keys(self.keyTexture)
-
-            if event.type == actionEvent:  # When the player presses the action key
-                surrounding_blocks = self.make_surrounding_blocks(self.player.collision_rect)
-                blocks = pygame.sprite.Group()
-                blocks.add(surrounding_blocks[int(self.player.direction//45) - 1], Block(self.player.collision_rect, BLACK))
-                for door in pygame.sprite.groupcollide(self.doors, blocks, False, False):
-                    if not door.locked:
-                        if not door.is_open:
-                            params = {'door': door, 'phase': 0, 'startRect': copy.copy(door.rect)}
-                            self.animations.append(Animation("openDoor", params))
-                    elif self.player.keys > 0:
-                        self.player.keys -= 1
-                        door.unlock()
-                        pygame.event.post(pygame.event.Event(keyEvent))
-
+    def delayedEventHandling(self, event):  #Waits for the specified amount of time, then sends the event on it's way
+        pygame.time.wait(event.delay)
+        pygame.event.post(pygame.event.Event(genericEvent, code=event.code, entity=event.entity,))
     def make_wall_block(self, wall_texture, array_slice):
         rect = pygame.Rect(0, 0, 24, 24)
         sprite = Block(rect, BLACK)
@@ -694,7 +698,7 @@ class GameScene(Scene):
                     timer.time += timer.rate
                     if timer.time <= 0:
                         timer.time = timer.rate
-            clock.tick(1000)
+            clock.tick(500)
         print "Timer ended!"
 
 
