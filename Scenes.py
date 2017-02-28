@@ -245,6 +245,7 @@ class GameScene(Scene):
         self.arrows = pygame.sprite.RenderUpdates()
 
     def render(self, screen):
+        blit_to_gamesurface = self.gameSurface.blit
         # Game surface
         screen.fill(BLACK)
         self.background.draw(self.gameSurface)
@@ -254,14 +255,14 @@ class GameScene(Scene):
                     self.gameSurface.fill(BLACK, brick.rect)
                     pass"""
         for box in self.character_collision_boxes:
-            self.gameSurface.blit(self.shadow, box.rect.midleft)
+            blit_to_gamesurface(self.shadow, box.rect.midleft)
         self.action_group.draw(self.gameSurface)
         if not 315 >= self.player.direction >= 180:
-            self.gameSurface.blit(self.swordsprite.image, self.swordsprite.rect)
+            blit_to_gamesurface(self.swordsprite.image, self.swordsprite.rect)
             self.entities.draw(self.gameSurface)
         else:
             self.entities.draw(self.gameSurface)
-            self.gameSurface.blit(self.swordsprite.image, self.swordsprite.rect)
+            blit_to_gamesurface(self.swordsprite.image, self.swordsprite.rect)
         pygame.draw.rect(self.gameSurface, BLACK, pygame.Rect((0, 0), self.levelrect.size), 6)
         #self.gameSurface.fill(BLACK, self.player.collision_rect)
 
@@ -284,8 +285,9 @@ class GameScene(Scene):
         if self.paused:  # Don't update anything when paused, could add in any special exceptions here
             return
         # Update character positions, speed and layers
+        change_entity_layer = self.entities.change_layer
         for sprite in self.entities.sprites():
-            self.entities.change_layer(sprite, sprite.rect.centery)
+            change_entity_layer(sprite, sprite.rect.centery)
         self.character_collision_boxes = [entity.get_collision_box() for entity in self.entities]
         for entity in self.entities:
             if type(entity) is not Player:
@@ -295,26 +297,8 @@ class GameScene(Scene):
             if not self.collidables[x].alive():
                 self.collidables.pop(x)
         # Update camera
-        camera = self.camera
-        if self.player.collision_rect.left <= self.cameraLeeway.left and self.player.vx < 0:
-            self.cameraLeeway.left = self.player.collision_rect.left
-        elif self.player.collision_rect.right >= self.cameraLeeway.right and self.player.vx > 0:
-            self.cameraLeeway.right = self.player.collision_rect.right
-        if self.player.collision_rect.top <= self.cameraLeeway.top and self.player.vy < 0:
-            self.cameraLeeway.top = self.player.collision_rect.top
-        if self.player.collision_rect.bottom >= self.cameraLeeway.bottom and self.player.vy > 0:
-            self.cameraLeeway.bottom = self.player.collision_rect.bottom
-
-        camera.center = self.cameraLeeway.center  # Camera follows the camera leeway rect
-
-        if camera.x < 0:   # Make sure camera does not leave the game area
-            camera.x = 0
-        elif camera.right > self.gameSurface.get_width():
-            camera.right = self.gameSurface.get_width()
-        if camera.y < 0:
-            camera.y = 0
-        elif camera.bottom > self.gameSurface.get_height():
-            camera.bottom = self.gameSurface.get_height()
+        if self.player.moving and not self.cameraLeeway.contains(self.player.collision_rect):
+            self.update_camera()
 
         # Handle location triggers
         for trigger in self.triggers:
@@ -620,9 +604,9 @@ class GameScene(Scene):
     def update_hearts(self, heartTexture):
         self.heartList = list()
         for i in xrange(self.player.maxHealth):
-            rect = pygame.Rect((window_width / 6) +(40 * i), 20, 7 * 4, 7 * 4)  # Edit this to change heart locations
+            rect = pygame.Rect((window_width / 6) + (40 * i), 20, 7 * 4, 7 * 4)  # Edit this to change heart locations
             if self.player.health > i:
-                self.heartList.append(SimpleRectSprite(rect, heartTexture.subsurface(pygame.Rect(0,0,8,8)), True))
+                self.heartList.append(SimpleRectSprite(rect, heartTexture.subsurface(pygame.Rect(0, 0, 8, 8)), True))
             else:
                 self.heartList.append(SimpleRectSprite(rect, heartTexture.subsurface(pygame.Rect(8*12, 0, 8, 8)), True))
         self.hearts = pygame.sprite.RenderUpdates(self.heartList)
@@ -644,9 +628,10 @@ class GameScene(Scene):
 
     def teleportPlayerToTag(self, playerLocation):
         found_tag = False
-        for a in xrange(len(self.lines)):
-            for b in xrange(len(self.lines[a])):
-                if playerLocation in self.lines[a][b]:
+        l = self.lines
+        for a in xrange(len(l)):
+            for b in xrange(len(l[a])):
+                if playerLocation in l[a][b]:
                     self.player.update_player(
                         pygame.Rect((b * drawSize, a * drawSize), self.player.collision_rect.size), 180)
                     self.cameraLeeway.center = self.player.collision_rect.center
@@ -668,7 +653,7 @@ class GameScene(Scene):
         self.player.update_speed()
         self.cameraLeeway.center = self.player.collision_rect.center
 
-    def load_level(self): # Don't mess with the player here, use set_player or teleportPlayerToTag
+    def load_level(self):  # Don't mess with the player here, use set_player or teleportPlayerToTag
         for npc in self.npcs:
             npc.set_position(npc.startPoint)
         # Manually unstun player and update speed in case player is already holding down movement keys
@@ -680,6 +665,7 @@ class GameScene(Scene):
         self.timerThread = threading.Thread(target=self.event_timers)
         self.timerThread.daemon = True
         self.timerThread.start()
+        self.update_camera()
 
     def event_timers(self):
         return
@@ -704,6 +690,29 @@ class GameScene(Scene):
                         timer.time = timer.rate
             clock.tick(500)
         print "Timer ended!"
+
+    def update_camera(self):
+        camera = self.camera
+        if self.player.collision_rect.left <= self.cameraLeeway.left and self.player.vx < 0:
+            self.cameraLeeway.left = self.player.collision_rect.left
+        elif self.player.collision_rect.right >= self.cameraLeeway.right and self.player.vx > 0:
+            self.cameraLeeway.right = self.player.collision_rect.right
+        if self.player.collision_rect.top <= self.cameraLeeway.top and self.player.vy < 0:
+            self.cameraLeeway.top = self.player.collision_rect.top
+        if self.player.collision_rect.bottom >= self.cameraLeeway.bottom and self.player.vy > 0:
+            self.cameraLeeway.bottom = self.player.collision_rect.bottom
+
+        camera.center = self.cameraLeeway.center  # Camera follows the camera leeway rect
+
+        if camera.x < 0:   # Make sure camera does not leave the game area
+            camera.x = 0
+        elif camera.right > self.gameSurface.get_width():
+            camera.right = self.gameSurface.get_width()
+        if camera.y < 0:
+            camera.y = 0
+        elif camera.bottom > self.gameSurface.get_height():
+            camera.bottom = self.gameSurface.get_height()
+
 
 
 class TitleScene(Scene):
@@ -740,14 +749,15 @@ class TitleScene(Scene):
         self.logo_sprite.rect.center = (self.screenRect.centerx, self.menu_background.rect.centery + 150)
 
     def render(self, screen):
+        blitToScreen = screen.blit
         self.backgroundSprites.draw(screen)
-        screen.blit(self.menu_background.image, self.menu_background.rect)
+        blitToScreen(self.menu_background.image, self.menu_background.rect)
         text1 = self.font.render('Lokaverkefni', True, tuple(self.color))
         text2 = self.sfont.render('> press space to start <', True, WHITE)
-        screen.blit(text1, (self.menu_background.rect.left + 460, self.menu_background.rect.top + 100))
-        screen.blit(text2, (self.menu_background.rect.left + 425, self.menu_background.rect.top + self.textCoord))
-        screen.blit(self.logo_sprite.image, self.logo_sprite.rect)
-        screen.blit(self.whiteScreen, (0, 0))
+        blitToScreen(text1, (self.menu_background.rect.left + 460, self.menu_background.rect.top + 100))
+        blitToScreen(text2, (self.menu_background.rect.left + 425, self.menu_background.rect.top + self.textCoord))
+        blitToScreen(self.logo_sprite.image, self.logo_sprite.rect)
+        blitToScreen(self.whiteScreen, (0, 0))
 
     def update(self, time):
         self.textCoord = 300 + (sin(self.textLevel) * 10)
@@ -863,12 +873,14 @@ class GameOverScene(Scene):
         self.textRect.center = pygame.Rect((0, 0), window_size).center
 
     def render(self, screen):
-        screen.blit(self.background, (0 ,0))
-        screen.blit(self.blackScreen, (0, 0))
-        screen.blit(self.text3, (self.textRect.left + 85, self.textRect.top + 55))
-        screen.blit(self.text4, (self.textRect.left + 5, self.textRect.top + 125))
-        screen.blit(self.text, (self.textRect.left + 80, self.textRect.top + 50))
-        screen.blit(self.text2, (self.textRect.left, self.textRect.top + 120))
+        blit_to_screen = screen.blit
+        text_rect = self.textRect
+        blit_to_screen(self.background, (0 ,0))
+        blit_to_screen(self.blackScreen, (0, 0))
+        blit_to_screen(self.text3, (text_rect.left + 85, text_rect.top + 55))
+        blit_to_screen(self.text4, (text_rect.left + 5, text_rect.top + 125))
+        blit_to_screen(self.text, (text_rect.left + 80, text_rect.top + 50))
+        blit_to_screen(self.text2, (text_rect.left, text_rect.top + 120))
 
     def update(self, time):
         pass

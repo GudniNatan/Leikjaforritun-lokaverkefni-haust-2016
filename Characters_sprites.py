@@ -61,8 +61,12 @@ class Character(pygame.sprite.DirtySprite):
             except Exception:
                 direction = 180
                 direction += vec2d_jdm.Vec2D(vy, -vx).get_angle()  # Please note the += 180, get angle will return negatives
-        direction = round(15 * round(float(round(direction + 1))/15), 2) % 360
-
+        if 90 <= direction <= 270:
+            direction -= 7
+        else:
+            direction += 3
+        direction = round(15 * round(float(round(direction))/15), 2) % 360
+        print(direction)
         """if vx and vy:
             if vy < 0 and vx < 0:
                 direction = 315
