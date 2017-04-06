@@ -1,10 +1,11 @@
-import pygame
+import pygameGTools as pygame
 from pygame.locals import *
 import os
 from Constants import *
 from Characters_sprites import *
 from Methods import *
 from Objects import *
+from Other_sprites import *
 import random
 import codecs
 import threading
@@ -100,7 +101,6 @@ class GameScene(Scene):
 
 
         #Custom event timers
-        self.timerRunning = False
         self.timers = list()
 
         #Grid
@@ -133,7 +133,7 @@ class GameScene(Scene):
                 if "Bowman" in lines[i][j]:
                     bowman = Bowman(pygame.Rect(rect.x, rect.y, drawSize-1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(charset.get_width() / 18 * 6, charsetRect.bottom - (charsetRect.height / 8 * 4), charset.get_width() / 18 * 3, charsetRect.height / 8 * 4)), character_sprite_size, self.player)
                     self.npcs.add(bowman)
-                    self.timers.append(Timer(bowmanShootEvent, random.randint(5000, 10000)))
+                    pygame.time.set_timer(bowmanShootEvent, 5000)
                 if "Player" in lines[i][j]:
                     self.player.update_player(pygame.Rect(rect.x, rect.y, drawSize - 1, drawSize / 5 * 3), 180)
                 if 2 in lines[i][j]:
@@ -243,6 +243,7 @@ class GameScene(Scene):
             self.offset.y = (window_height - self.levelrect.h) / 2
         self.cameraLeeway.center = self.player.collision_rect.center
         self.arrows = pygame.sprite.RenderUpdates()
+        self.timerThread = threading.Thread()
 
     def render(self, screen):
         blit_to_gamesurface = self.gameSurface.blit
@@ -266,7 +267,7 @@ class GameScene(Scene):
         pygame.draw.rect(self.gameSurface, BLACK, pygame.Rect((0, 0), self.levelrect.size), 6)
         #self.gameSurface.fill(BLACK, self.player.collision_rect)
 
-        screen.blit(self.gameSurface.subsurface(self.camera), (self.offset.x, self.offset.y))
+        screen.blit(self.gameSurface, ( self.offset.x  + 0 - self.camera.left,  self.offset.y  + 0 - self.camera.top))
         #screen.blit(pygame.transform.scale(gameSurface, window_size), (0, 0))
 
         # UI
@@ -279,6 +280,7 @@ class GameScene(Scene):
             pygame.draw.rect(screen, WHITE, line_rect2)
         screen.blit(self.swordsprite.image, (0,0))
         screen.blit(self.sword_icon.subsurface(pygame.Rect(0, 0, 44, 44)), (1000, 20))
+        self.grand_clock.tick()
 
     def update(self, time):
         #self.grid.update_grid(self.collidables + self.character_collision_boxes)
@@ -297,10 +299,10 @@ class GameScene(Scene):
             if not self.collidables[x].alive():
                 self.collidables.pop(x)
         # Update camera
-        if self.player.moving and not self.cameraLeeway.contains(self.player.collision_rect):
+        if self.player.moving:
             self.update_camera()
 
-        # Handle location triggers
+        # Handle location based triggers
         for trigger in self.triggers:
             if trigger.rect.colliderect(self.player.collision_rect):
                 # Collision/movement based triggers
@@ -319,13 +321,15 @@ class GameScene(Scene):
         for event in events:
             if event.type == pygame.QUIT:
                 self.timerRunning = False
-                self.timerThread.join()
+                if self.timerThread.is_alive():
+                    self.timerThread.join()
                 pygame.event.post(pygame.event.Event(QUIT))
             if event.type == pygame.KEYDOWN and event.key == pygame.K_p:
                 self.paused = not self.paused
             if event.type == KEYDOWN and event.key == K_ESCAPE:
                 self.timerRunning = False
-                self.timerThread.join()
+                if self.timerThread.is_alive():
+                    self.timerThread.join()
                 self.manager.go_to(TitleScene())
             if self.paused:
                 continue
@@ -345,6 +349,12 @@ class GameScene(Scene):
                         char.findShootingSpot(self.grid)
             if event.type == updateGridEvent:
                 self.grid.update_grid(self.collidables)
+            if event.type == bowmanShootEvent:
+                print "BOWMAN SHOOT EVENT"
+                for npc in self.npcs:
+                    if type(npc) is Bowman:
+                        pygame.event.post(pygame.event.Event(delayedGenericEvent, code='bowmanShoot', delay=random.randint(0, 3000), entity=npc, ))
+
             if event.type == animationEvent:
                 # Update all active animations
                 for s in self.animations:
@@ -427,9 +437,13 @@ class GameScene(Scene):
                     if s.name == "leaveRoom":
                         if s.phase == 20:
                             #self.manager.go_to(GameScene(s.nextScene, self.player, pygame.Rect((300, 100), self.player.collision_rect.size)))
-                            self.nextSceneThread.join()
+                            if self.nextSceneThread.is_alive():
+                                self.nextSceneThread.join()
+                            else:
+                                self.nextScene
                             self.timerRunning = False
-                            self.timerThread.join()
+                            if self.timerThread.is_alive():
+                                self.timerThread.join()
                             self.manager.go_to(self.nextScene)
                             self.manager.scene.set_player(self.player, s.gotoWhere)
                             self.animations.remove(s)
@@ -482,7 +496,7 @@ class GameScene(Scene):
                     for sprite in pygame.sprite.groupcollide(self.npcs, blocks, False, False):
                         sprite.hit()
 
-                if event.code == "healthEvent":
+                elif event.code == "healthEvent":
                     if self.player.health > self.player.maxHealth:
                         self.player.health = self.player.maxHealth - 1
                         self.player.displayHealth = self.player.maxHealth
@@ -496,13 +510,14 @@ class GameScene(Scene):
                         gamesurface.fill(BLACK)
                         gamesurface.blit(self.gameSurface.subsurface(self.camera), (self.offset.x, self.offset.y))
                         self.timerRunning = False
-                        self.timerThread.join()
+                        if self.timerThread.is_alive():
+                            self.timerThread.join()
                         self.manager.go_to(GameOverScene(gamesurface))
 
-                if event.code == "keyEvent":
+                elif event.code == "keyEvent":
                     self.update_keys(self.keyTexture)
 
-                if event.code == "actionEvent":  # When the player presses the action key
+                elif event.code == "actionEvent":  # When the player presses the action key
                     surrounding_blocks = self.make_surrounding_blocks(self.player.collision_rect)
                     blocks = pygame.sprite.Group()
                     blocks.add(surrounding_blocks[int(self.player.direction//45) - 1], Block(self.player.collision_rect, BLACK))
@@ -515,7 +530,7 @@ class GameScene(Scene):
                             self.player.keys -= 1
                             door.unlock()
                             pygame.event.post(pygame.event.Event(genericEvent, code='keyEvent',))
-                if event.code == "unstunEvent":
+                elif event.code == "unstunEvent":
                     if event.entity.stunned:
                         event.entity.stunned = False
                     if event.entity.health <= 0:
@@ -523,14 +538,17 @@ class GameScene(Scene):
                             event.entity.kill()
                         except ValueError:
                             event.entity = None
+
+                elif event.code == "bowmanShoot":
+                    print ("SHOOT", event.entity)
+                    #arrow = Arrow()
             if event.type == delayedGenericEvent:
-                self.timerThread = threading.Thread(target=self.delayedEventHandling, args=(event,))
-                self.timerThread.daemon = True
+                self.timerThread = threading.Timer(float(event.delay) / 1000.0, self.delayedEventHandling, args=(event,))
                 self.timerThread.start()
 
     def delayedEventHandling(self, event):  #Waits for the specified amount of time, then sends the event on it's way
-        pygame.time.wait(event.delay)
         pygame.event.post(pygame.event.Event(genericEvent, code=event.code, entity=event.entity,))
+
     def make_wall_block(self, wall_texture, array_slice):
         rect = pygame.Rect(0, 0, 24, 24)
         sprite = Block(rect, BLACK)
@@ -652,6 +670,7 @@ class GameScene(Scene):
         self.player.directionLock = False
         self.player.update_speed()
         self.cameraLeeway.center = self.player.collision_rect.center
+        self.update_camera()
 
     def load_level(self):  # Don't mess with the player here, use set_player or teleportPlayerToTag
         for npc in self.npcs:
@@ -662,57 +681,15 @@ class GameScene(Scene):
         self.player.directionLock = False
         self.player.update_speed()
         self.cameraLeeway.center = self.player.collision_rect.center
-        self.timerThread = threading.Thread(target=self.event_timers)
-        self.timerThread.daemon = True
-        self.timerThread.start()
         self.update_camera()
-
-    def event_timers(self):
-        return
-        clock = pygame.time.Clock()
-        self.timerRunning = True
-        print "Running timer!"
-        while self.timerRunning:
-            time = clock.get_time()
-            for timer in self.timers:
-                if timer.rate <= 0:
-                    self.timers.remove(timer)
-                timer.time -= time
-                if timer.time <= 0:
-                    if timer.event == bowmanShootEvent:
-                        for npc in self.npcs:
-                            if type(npc) is Bowman:
-                                print "SHOOT"
-
-                        pass
-                    timer.time += timer.rate
-                    if timer.time <= 0:
-                        timer.time = timer.rate
-            clock.tick(500)
-        print "Timer ended!"
 
     def update_camera(self):
         camera = self.camera
-        if self.player.collision_rect.left <= self.cameraLeeway.left and self.player.vx < 0:
-            self.cameraLeeway.left = self.player.collision_rect.left
-        elif self.player.collision_rect.right >= self.cameraLeeway.right and self.player.vx > 0:
-            self.cameraLeeway.right = self.player.collision_rect.right
-        if self.player.collision_rect.top <= self.cameraLeeway.top and self.player.vy < 0:
-            self.cameraLeeway.top = self.player.collision_rect.top
-        if self.player.collision_rect.bottom >= self.cameraLeeway.bottom and self.player.vy > 0:
-            self.cameraLeeway.bottom = self.player.collision_rect.bottom
-
-        camera.center = self.cameraLeeway.center  # Camera follows the camera leeway rect
-
-        if camera.x < 0:   # Make sure camera does not leave the game area
-            camera.x = 0
-        elif camera.right > self.gameSurface.get_width():
-            camera.right = self.gameSurface.get_width()
-        if camera.y < 0:
-            camera.y = 0
-        elif camera.bottom > self.gameSurface.get_height():
-            camera.bottom = self.gameSurface.get_height()
-
+        cameraLeeway = self.cameraLeeway
+        player = self.player
+        self.cameraLeeway = cameraLeeway.reverse_clamp(player.collision_rect)
+        self.camera.center = cameraLeeway.center  # Camera follows the camera leeway rect
+        self.camera = camera.clamp(self.gameSurface.get_rect())  # Make sure camera does not leave the game area
 
 
 class TitleScene(Scene):
