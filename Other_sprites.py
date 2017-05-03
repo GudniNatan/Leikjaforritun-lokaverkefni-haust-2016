@@ -1,4 +1,4 @@
-import pygameGTools as pygame
+import pygame
 from Constants import *
 import Methods
 from Objects import SimpleRectSprite

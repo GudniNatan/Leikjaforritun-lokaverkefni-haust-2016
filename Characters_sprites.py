@@ -66,7 +66,6 @@ class Character(pygame.sprite.DirtySprite):
         else:
             direction += 3
         direction = round(15 * round(float(round(direction))/15), 2) % 360
-        print(direction)
         """if vx and vy:
             if vy < 0 and vx < 0:
                 direction = 315

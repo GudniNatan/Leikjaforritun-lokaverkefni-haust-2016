@@ -36,6 +36,7 @@ def reverse_clamp(smaller_rect, larger_rect):
         elif smaller_rect.bottom >= larger_rect.bottom:
             new_rect.bottom = smaller_rect.bottom
         return new_rect
+    return larger_rect
 
 
 def reverse_clamp_ip(smaller_rect, larger_rect):

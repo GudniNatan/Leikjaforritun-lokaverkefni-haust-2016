@@ -1,4 +1,4 @@
-import pygameGTools as pygame
+import pygame
 from pygame.locals import *
 import os
 from Constants import *
@@ -133,7 +133,7 @@ class GameScene(Scene):
                 if "Bowman" in lines[i][j]:
                     bowman = Bowman(pygame.Rect(rect.x, rect.y, drawSize-1, drawSize / 5 * 3), charset.subsurface(pygame.Rect(charset.get_width() / 18 * 6, charsetRect.bottom - (charsetRect.height / 8 * 4), charset.get_width() / 18 * 3, charsetRect.height / 8 * 4)), character_sprite_size, self.player)
                     self.npcs.add(bowman)
-                    pygame.time.set_timer(bowmanShootEvent, 5000)
+                    #pygame.time.set_timer(bowmanShootEvent, 5000)
                 if "Player" in lines[i][j]:
                     self.player.update_player(pygame.Rect(rect.x, rect.y, drawSize - 1, drawSize / 5 * 3), 180)
                 if 2 in lines[i][j]:
@@ -439,8 +439,6 @@ class GameScene(Scene):
                             #self.manager.go_to(GameScene(s.nextScene, self.player, pygame.Rect((300, 100), self.player.collision_rect.size)))
                             if self.nextSceneThread.is_alive():
                                 self.nextSceneThread.join()
-                            else:
-                                self.nextScene
                             self.timerRunning = False
                             if self.timerThread.is_alive():
                                 self.timerThread.join()
@@ -687,8 +685,8 @@ class GameScene(Scene):
         camera = self.camera
         cameraLeeway = self.cameraLeeway
         player = self.player
-        self.cameraLeeway = cameraLeeway.reverse_clamp(player.collision_rect)
-        self.camera.center = cameraLeeway.center  # Camera follows the camera leeway rect
+        self.cameraLeeway = reverse_clamp(player.collision_rect, cameraLeeway)
+        self.camera.center = self.cameraLeeway.center  # Camera follows the camera leeway rect
         self.camera = camera.clamp(self.gameSurface.get_rect())  # Make sure camera does not leave the game area
 
 
